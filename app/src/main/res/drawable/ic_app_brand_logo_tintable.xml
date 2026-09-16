@@ -1,14 +1,14 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
+    android:width="48dp"
+    android:height="48dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <!-- Top-left interlocking screenshot frame -->
     <path
-        android:fillColor="#18181B"
+        android:fillColor="#FFFFFFFF"
         android:pathData="M 48,65 L 37,65 A 10,10 0 0,1 27,55 L 27,37 A 10,10 0 0,1 37,27 L 55,27 A 10,10 0 0,1 65,37 L 65,48 L 55.5,41 L 55.5,38 A 4.5,4.5 0 0,0 51,33.5 L 41,33.5 A 4.5,4.5 0 0,0 36.5,38 L 36.5,51 A 4.5,4.5 0 0,0 41,55.5 L 41,55.5 Z" />
     <!-- Bottom-right interlocking screenshot frame -->
     <path
-        android:fillColor="#18181B"
+        android:fillColor="#FFFFFFFF"
         android:pathData="M 60,43 L 71,43 A 10,10 0 0,1 81,53 L 81,71 A 10,10 0 0,1 71,81 L 53,81 A 10,10 0 0,1 43,71 L 43,60 L 52.5,67 L 52.5,70 A 4.5,4.5 0 0,0 57,74.5 L 67,74.5 A 4.5,4.5 0 0,0 71.5,70 L 71.5,57 A 4.5,4.5 0 0,0 67,52.5 L 67,52.5 Z" />
 </vector>

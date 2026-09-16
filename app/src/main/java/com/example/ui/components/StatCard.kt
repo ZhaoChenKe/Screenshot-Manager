@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,8 +32,8 @@ fun StatCard(
     title: String,
     count: Int,
     icon: ImageVector,
-    containerColor: Color,
-    contentColor: Color,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -46,12 +47,13 @@ fun StatCard(
             .testTag("stat_card_${title}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
@@ -61,15 +63,15 @@ fun StatCard(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = contentColor.copy(alpha = 0.8f),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor.copy(alpha = 0.7f),
                     fontWeight = FontWeight.Medium
                 )
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    tint = contentColor,
-                    modifier = Modifier.size(20.dp)
+                    tint = contentColor.copy(alpha = 0.85f),
+                    modifier = Modifier.size(18.dp)
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
@@ -82,3 +84,4 @@ fun StatCard(
         }
     }
 }
+

@@ -1,10 +1,13 @@
 package com.example.ui.screens.home
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,15 +27,19 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,14 +64,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.R
 import com.example.ui.components.EmptyStateView
 import com.example.ui.components.ProgressBarCard
 import com.example.ui.components.ScreenshotCard
 import com.example.ui.components.StatCard
+import com.example.ui.util.CategoryUiHelper
 import com.example.ui.viewmodel.ScreenshotViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,7 +95,32 @@ fun HomeScreen(
     val categoriesWithCount by viewModel.categoriesWithCount.collectAsStateWithLifecycle()
     val duplicateGroups by viewModel.duplicateGroups.collectAsStateWithLifecycle()
 
-    var hasStoragePermission by remember { mutableStateOf(false) }
+    var selectedCategoryId by remember { mutableStateOf<String?>(null) }
+
+    val filteredScreenshots = remember(recentScreenshots, selectedCategoryId) {
+        if (selectedCategoryId == null) {
+            recentScreenshots
+        } else {
+            recentScreenshots.filter { it.screenshot.categoryId.equals(selectedCategoryId, ignoreCase = true) }
+        }
+    }
+
+    val context = LocalContext.current
+    var hasStoragePermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.READ_MEDIA_IMAGES
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+            }
+        )
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -97,12 +133,16 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
-        val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+        if (!hasStoragePermission) {
+            val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+            } else {
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            permissionLauncher.launch(permissionsToRequest)
         } else {
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            viewModel.startScan()
         }
-        permissionLauncher.launch(permissionsToRequest)
     }
 
     Scaffold(
@@ -110,27 +150,62 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "截图管家",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(9.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                    shape = RoundedCornerShape(9.dp)
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "OCR·AI",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_app_brand_logo_tintable),
+                                contentDescription = "Logo",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(20.dp)
                             )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "截图管家",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Text(
+                                        text = "离线OCR",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { viewModel.loadSampleScreenshots() },
+                        modifier = Modifier.testTag("home_load_samples_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "导入演示示例截图",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     IconButton(
                         onClick = { viewModel.startScan() },
                         modifier = Modifier.testTag("home_refresh_button")
@@ -157,15 +232,15 @@ fun HomeScreen(
         }
     ) { innerPadding ->
         LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
+            columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
                 top = innerPadding.calculateTopPadding() + 8.dp,
                 bottom = innerPadding.calculateBottomPadding() + 80.dp
             ),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("home_screenshot_grid")
@@ -175,13 +250,15 @@ fun HomeScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .clickable(onClick = onNavigateToSearch)
                         .testTag("home_search_bar_trigger"),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -190,16 +267,31 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Search,
+                            imageVector = Icons.Outlined.Search,
                             contentDescription = "搜索",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "搜索截图文字、价格、商品、单号...",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                            modifier = Modifier.weight(1f)
                         )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = "AI·OCR",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -209,7 +301,7 @@ fun HomeScreen(
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.tertiaryContainer
                         )
@@ -267,16 +359,16 @@ fun HomeScreen(
                         title = "全部截图",
                         count = totalCount,
                         icon = Icons.Default.Collections,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(
                         title = "待整理",
                         count = unprocessedCount,
                         icon = Icons.Default.PendingActions,
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = if (unprocessedCount > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
                         onClick = { viewModel.startProcessPending() },
                         modifier = Modifier.weight(1f)
                     )
@@ -285,8 +377,8 @@ fun HomeScreen(
                             title = "疑似重复",
                             count = duplicateGroups.size,
                             icon = Icons.Default.CleaningServices,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
                             onClick = onNavigateToDuplicates,
                             modifier = Modifier.weight(1f)
                         )
@@ -294,46 +386,154 @@ fun HomeScreen(
                 }
             }
 
-            // 5. Popular Categories quick bar
+            // 5. Redesigned Category Filter Bar
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(modifier = Modifier.padding(top = 4.dp)) {
-                    Text(
-                        text = "常用分类",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        items(categoriesWithCount) { cat ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "图片分类",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                val activeCategoryCount = categoriesWithCount.count { it.count > 0 }
+                                Text(
+                                    text = "$activeCategoryCount 个包含截图",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "全部分类 ›",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    if (selectedCategoryId != null) {
+                                        onNavigateToCategory(selectedCategoryId!!)
+                                    } else {
+                                        onNavigateToCategory("shopping")
+                                    }
+                                }
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                        )
+                    }
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = 0.dp)
+                    ) {
+                        // "全部" (All) capsule
+                        item {
+                            val isAllSelected = selectedCategoryId == null
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isAllSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surface,
+                                border = if (isAllSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable { onNavigateToCategory(cat.id) }
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .clickable { selectedCategoryId = null }
+                                    .testTag("category_filter_all")
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(text = cat.icon, fontSize = 14.sp)
+                                    Icon(
+                                        imageVector = Icons.Outlined.GridView,
+                                        contentDescription = "全部",
+                                        tint = if (isAllSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "全部",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isAllSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isAllSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Text(
+                                            text = "$totalCount",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isAllSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Category items
+                        items(categoriesWithCount, key = { it.id }) { cat ->
+                            val isSelected = selectedCategoryId == cat.id
+                            val style = CategoryUiHelper.getStyle(cat.id)
+
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isSelected) style.accentColor else MaterialTheme.colorScheme.surface,
+                                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .clickable {
+                                        selectedCategoryId = if (isSelected) null else cat.id
+                                    }
+                                    .testTag("category_filter_${cat.id}")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = style.icon,
+                                        contentDescription = cat.name,
+                                        tint = if (isSelected) Color.White else style.accentColor,
+                                        modifier = Modifier.size(15.dp)
+                                    )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = cat.name,
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Medium
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
                                     )
                                     if (cat.count > 0) {
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "${cat.count}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = if (isSelected) Color.White.copy(alpha = 0.25f) else style.lightBgColor
+                                        ) {
+                                            Text(
+                                                text = "${cat.count}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isSelected) Color.White else style.accentColor,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -347,37 +547,85 @@ fun HomeScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 4.dp),
+                        .padding(top = 10.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "最近截图",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "共 $totalCount 张",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    val sectionTitle = if (selectedCategoryId != null) {
+                        "${CategoryUiHelper.getStyle(selectedCategoryId!!).displayName} 截图"
+                    } else {
+                        "最近截图"
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = sectionTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "共 ${filteredScreenshots.size} 张",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (selectedCategoryId != null) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { selectedCategoryId = null }
+                                .padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "清除筛选",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "清除筛选",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
 
             // 7. Grid items
-            if (recentScreenshots.isEmpty() && !progress.isScanning) {
+            if (filteredScreenshots.isEmpty() && !progress.isScanning) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    EmptyStateView(
-                        icon = Icons.Default.Collections,
-                        title = "暂无截图",
-                        description = "点击上方刷新按钮自动扫描手机相册中的截图，或通过其他应用分享图片到截图管家。",
-                        actionButtonText = "立即扫描相册",
-                        onActionClick = { viewModel.startScan() },
-                        modifier = Modifier.padding(top = 32.dp)
-                    )
+                    if (selectedCategoryId != null) {
+                        val style = CategoryUiHelper.getStyle(selectedCategoryId!!)
+                        EmptyStateView(
+                            icon = style.icon,
+                            title = "暂无${style.displayName}分类截图",
+                            description = "当前分类下暂无已识别截图。您可以点击下方按钮返回查看全部截图，或导入演示截图。",
+                            actionButtonText = "查看全部截图",
+                            onActionClick = { selectedCategoryId = null },
+                            secondaryButtonText = "导入示例截图",
+                            onSecondaryClick = { viewModel.loadSampleScreenshots() },
+                            modifier = Modifier.padding(top = 28.dp)
+                        )
+                    } else {
+                        EmptyStateView(
+                            icon = Icons.Default.Collections,
+                            title = "暂无截图",
+                            description = "相册中暂未检测到截图。您可以一键导入演示示例截图体验全部功能，或点击扫描设备相册。",
+                            actionButtonText = "导入演示示例截图",
+                            onActionClick = { viewModel.loadSampleScreenshots() },
+                            secondaryButtonText = "扫描设备相册",
+                            onSecondaryClick = { viewModel.startScan() },
+                            modifier = Modifier.padding(top = 28.dp)
+                        )
+                    }
                 }
             } else {
-                items(recentScreenshots, key = { it.screenshot.id }) { item ->
+                items(filteredScreenshots, key = { it.screenshot.id }) { item ->
                     ScreenshotCard(
                         item = item,
                         onClick = { onNavigateToDetail(item.screenshot.id) }

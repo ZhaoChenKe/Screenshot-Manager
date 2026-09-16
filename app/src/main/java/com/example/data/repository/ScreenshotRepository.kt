@@ -1,6 +1,11 @@
 package com.example.data.repository
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.net.Uri
 import android.util.Log
 import com.example.ai.AiService
@@ -24,6 +29,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 
 data class ProcessingProgress(
     val isScanning: Boolean = false,
@@ -246,5 +253,174 @@ class ScreenshotRepository(
 
     suspend fun getPotentialDuplicates(): List<ScreenshotEntity> = withContext(Dispatchers.IO) {
         screenshotDao.getPotentialDuplicates()
+    }
+
+    /**
+     * Generates and loads realistic sample screenshots for immediate preview
+     */
+    suspend fun loadSampleScreenshots() = withContext(Dispatchers.IO) {
+        val sampleDir = File(context.filesDir, "sample_screenshots")
+        if (!sampleDir.exists()) sampleDir.mkdirs()
+
+        data class SampleData(
+            val fileName: String,
+            val title: String,
+            val categoryId: String,
+            val ocrText: String,
+            val tags: List<String>,
+            val summary: String,
+            val headerColor: Int,
+            val appTitle: String,
+            val bodyLines: List<String>
+        )
+
+        val samples = listOf(
+            SampleData(
+                fileName = "Screenshot_Taobao_Keyboard_2026.jpg",
+                title = "淘宝·机械键盘订单",
+                categoryId = "shopping",
+                ocrText = "淘宝 交易成功\n订单号：284918239102938\n商品：Keychron K3 Pro 双模矮轴机械键盘\n实付款：￥399.00\n发货快递：顺丰速运 SF13928472910\n交易时间：2026-09-14 18:20",
+                tags = listOf("购物", "键盘", "数码", "顺丰"),
+                summary = "Keychron 矮轴键盘订单已付款 399 元，顺丰单号 SF13928472910",
+                headerColor = Color.parseColor("#FF5000"),
+                appTitle = "淘宝 · 订单详情",
+                bodyLines = listOf("交易状态：买家已付款", "商品：Keychron K3 Pro 机械键盘", "实付款：￥399.00", "运单号：SF13928472910")
+            ),
+            SampleData(
+                fileName = "Screenshot_SF_Express_2026.jpg",
+                title = "顺丰速运·派件通知",
+                categoryId = "express",
+                ocrText = "顺丰速运\n运单号：SF13928472910\n快件正在派送中\n派件员：王师傅 13800138000\n预计今日 14:30 送达中关村南大街丰巢快递柜",
+                tags = listOf("快递", "顺丰", "派送", "丰巢"),
+                summary = "顺丰快件派送中，预计今日 14:30 投递至中关村丰巢快递柜",
+                headerColor = Color.parseColor("#222222"),
+                appTitle = "顺丰速运 · 运单追踪",
+                bodyLines = listOf("运单号：SF13928472910", "状态：派送中", "派件员：王师傅 13800138000", "送达点：海淀区中关村丰巢柜")
+            ),
+            SampleData(
+                fileName = "Screenshot_Meeting_Notes_2026.jpg",
+                title = "Q4产品规划会议纪要",
+                categoryId = "work",
+                ocrText = "飞书文档 · Q4移动端产品规划会议\n参会人：张伟、李莉、王强、陈工\n讨论要点：\n1. 截图管家本地离线 OCR 准确率达 98%\n2. Gemini 语义结构化提炼完成\n3. 下周三封版上线",
+                tags = listOf("工作", "会议", "待办", "产品规划"),
+                summary = "Q4移动端产品规划会议，讨论离线OCR与Gemini结构化分析，下周三封版",
+                headerColor = Color.parseColor("#1B6AF4"),
+                appTitle = "飞书文档 · 会议纪要",
+                bodyLines = listOf("Q4移动端产品规划会议", "参会人：张伟、李莉、王强", "1. 离线OCR识别率达到98%", "2. 下周三完成封版上线")
+            ),
+            SampleData(
+                fileName = "Screenshot_Flight_AirChina_2026.jpg",
+                title = "中国国航·北京-上海机票",
+                categoryId = "travel",
+                ocrText = "航旅纵横 · 行程提醒\n航班号：CA1831\n行程：北京首都 T3 -> 上海虹桥 T2\n起飞时间：09月20日 08:30\n登机口：C28 座位号：16A",
+                tags = listOf("旅行", "机票", "国航", "行程"),
+                summary = "09月20日国航 CA1831 航班，北京T3至上海虹桥T2，座位16A",
+                headerColor = Color.parseColor("#C8102E"),
+                appTitle = "航旅纵横 · 行程详情",
+                bodyLines = listOf("航班：中国国际航空 CA1831", "行程：北京首都 T3 - 上海虹桥 T2", "时间：09月20日 08:30", "座位：16A (靠窗) · 登机口 C28")
+            ),
+            SampleData(
+                fileName = "Screenshot_Android_Kotlin_2026.jpg",
+                title = "Kotlin 协程 StateFlow 笔记",
+                categoryId = "doc",
+                ocrText = "掘金技术专栏 · Kotlin 协程 Flow 实战\nStateFlow 是一个具备初始值的热流，适合用于 Jetpack Compose 中的 UI 状态管理\nviewModelScope.launch {\n  repository.flow.collectAsStateWithLifecycle()\n}",
+                tags = listOf("学习", "Kotlin", "Android", "代码"),
+                summary = "Kotlin 协程 StateFlow 原理笔记，初始值与防抖特性在 Compose 中的实战用法",
+                headerColor = Color.parseColor("#7F52FF"),
+                appTitle = "技术笔记 · Android 开发",
+                bodyLines = listOf("Kotlin 协程 StateFlow 实战", "1. 具初始值的状态热流", "2. Compose UI 状态响应", "3. 结合 collectAsStateWithLifecycle")
+            )
+        )
+
+        for ((index, sample) in samples.withIndex()) {
+            val file = File(sampleDir, sample.fileName)
+            val width = 540
+            val height = 960
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+
+            canvas.drawColor(Color.parseColor("#F5F5F7"))
+
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+            // Status bar
+            paint.color = Color.parseColor("#1C1C1E")
+            paint.textSize = 20f
+            canvas.drawText("09:41", 36f, 44f, paint)
+            canvas.drawText("5G · 100%", (width - 130).toFloat(), 44f, paint)
+
+            // App Bar
+            paint.color = sample.headerColor
+            canvas.drawRect(0f, 64f, width.toFloat(), 150f, paint)
+
+            paint.color = Color.WHITE
+            paint.textSize = 28f
+            paint.isFakeBoldText = true
+            canvas.drawText(sample.appTitle, 36f, 120f, paint)
+
+            // Main Card
+            val cardRect = RectF(24f, 180f, (width - 24).toFloat(), (height - 60).toFloat())
+            paint.color = Color.WHITE
+            canvas.drawRoundRect(cardRect, 20f, 20f, paint)
+
+            // Card Inner Header
+            paint.color = Color.parseColor("#1C1C1E")
+            paint.textSize = 26f
+            paint.isFakeBoldText = true
+            canvas.drawText(sample.title, 50f, 240f, paint)
+
+            paint.color = Color.parseColor("#8E8E93")
+            paint.textSize = 18f
+            paint.isFakeBoldText = false
+            canvas.drawText("截图时间：2026-09-15 09:41 · 截图管家已识别", 50f, 280f, paint)
+
+            // Divider
+            paint.color = Color.parseColor("#E5E5EA")
+            paint.strokeWidth = 2f
+            canvas.drawLine(50f, 310f, (width - 50).toFloat(), 310f, paint)
+
+            // Body text lines
+            paint.color = Color.parseColor("#2C2C2E")
+            paint.textSize = 22f
+            var yPos = 370f
+            for (line in sample.bodyLines) {
+                canvas.drawText(line, 50f, yPos, paint)
+                yPos += 55f
+            }
+
+            // Tags Pill badge
+            paint.color = Color.parseColor("#EFEFF4")
+            val badgeRect = RectF(50f, yPos + 20f, 220f, yPos + 65f)
+            canvas.drawRoundRect(badgeRect, 12f, 12f, paint)
+            paint.color = sample.headerColor
+            paint.textSize = 18f
+            paint.isFakeBoldText = true
+            canvas.drawText("# " + sample.tags.first(), 70f, yPos + 50f, paint)
+
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 90, out)
+            }
+
+            val fileUri = Uri.fromFile(file).toString()
+            val now = System.currentTimeMillis() - (index * 3600000L)
+            val entity = ScreenshotEntity(
+                uri = fileUri,
+                fileName = sample.fileName,
+                createTime = now,
+                modifyTime = now,
+                ocrText = sample.ocrText,
+                title = sample.title,
+                summary = sample.summary,
+                categoryId = sample.categoryId,
+                width = width,
+                height = height,
+                fileSize = file.length(),
+                isProcessed = true
+            )
+            val id = screenshotDao.insertScreenshot(entity)
+            if (id > 0) {
+                tagDao.setTagsForScreenshot(id, sample.tags)
+            }
+        }
     }
 }

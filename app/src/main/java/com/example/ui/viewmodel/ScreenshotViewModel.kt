@@ -94,6 +94,14 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun loadSampleScreenshots(onCompleted: (() -> Unit)? = null) {
+        viewModelScope.launch {
+            repository.loadSampleScreenshots()
+            checkDuplicates()
+            onCompleted?.invoke()
+        }
+    }
+
     fun startProcessPending() {
         viewModelScope.launch {
             repository.processPendingScreenshots()

@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.ScreenshotWithDetails
+import com.example.ui.util.CategoryUiHelper
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -47,25 +50,27 @@ fun ScreenshotCard(
     val screenshot = item.screenshot
     val category = item.category
     val context = LocalContext.current
+    val categoryStyle = CategoryUiHelper.getStyle(screenshot.categoryId)
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .testTag("screenshot_card_${screenshot.id}"),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(0.75f)
-                    .background(MaterialTheme.colorScheme.surface)
+                    .aspectRatio(0.78f)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -77,26 +82,34 @@ fun ScreenshotCard(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Category pill on top-left
-                val categoryName = category?.name ?: "未分类"
-                val categoryIcon = category?.icon ?: "📷"
-                Box(
+                // Minimalist frosted category pill on top-left
+                val categoryName = category?.name ?: categoryStyle.displayName
+                Row(
                     modifier = Modifier
-                        .padding(6.dp)
+                        .padding(8.dp)
                         .align(Alignment.TopStart)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black.copy(alpha = 0.65f))
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                        .background(Color(0xE61E293B))
+                        .padding(horizontal = 7.dp, vertical = 3.5.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Icon(
+                        imageVector = categoryStyle.icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "$categoryIcon $categoryName",
+                        text = categoryName,
                         color = Color.White,
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.2.sp
                     )
                 }
 
-                // Bottom gradient scrim for readability
+                // Gradient scrim for date readability
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -104,7 +117,7 @@ fun ScreenshotCard(
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                                colors = listOf(Color.Transparent, Color(0xB3000000))
                             )
                         )
                 )
@@ -114,17 +127,18 @@ fun ScreenshotCard(
                 val dateStr = dateFormat.format(Date(screenshot.createTime))
                 Text(
                     text = dateStr,
-                    color = Color.White.copy(alpha = 0.9f),
+                    color = Color.White.copy(alpha = 0.92f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Normal,
+                    letterSpacing = 0.3.sp,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 6.dp, bottom = 4.dp)
+                        .padding(end = 8.dp, bottom = 5.dp)
                 )
             }
 
             // Title & Snippet info
-            Column(modifier = Modifier.padding(8.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
                 val displayTitle = when {
                     screenshot.title.isNotBlank() -> screenshot.title
                     screenshot.ocrText.isNotBlank() -> screenshot.ocrText.lines().firstOrNull { it.isNotBlank() } ?: screenshot.fileName
@@ -133,7 +147,7 @@ fun ScreenshotCard(
 
                 Text(
                     text = displayTitle,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -141,11 +155,20 @@ fun ScreenshotCard(
                 )
 
                 if (screenshot.summary.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = screenshot.summary,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else if (item.tags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = item.tags.take(2).joinToString(" ") { "#${it.name}" },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -154,3 +177,4 @@ fun ScreenshotCard(
         }
     }
 }
+

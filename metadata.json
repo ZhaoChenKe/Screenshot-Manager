@@ -1,5 +1,5 @@
 {
-  "name": "Remix 截图管家",
+  "name": "截图管家",
   "description": "智能截图整理、OCR文字识别、自动分类与全文搜索管家",
   "requestFramePermissions": [],
   "majorCapabilities": [
