@@ -28,16 +28,33 @@ jobs:
         if: env.GITEE_TOKEN != ''
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITEE_USER: ${{ secrets.GITEE_USER || 'ZhaoChenKe' }}
+          GITEE_USER: ${{ secrets.GITEE_USER || 'zhao-chenke' }}
           GITEE_REPO: ${{ secrets.GITEE_REPO || 'Screenshot-Manager' }}
         run: |
-          echo "Syncing code to Gitee repository: ${GITEE_USER}/${GITEE_REPO}..."
+          echo "=== 正在准备同步到 Gitee 仓库: ${GITEE_USER}/${GITEE_REPO} ==="
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git remote add gitee "https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
-          # 推送当前分支
-          git push -u gitee HEAD || git push -u gitee HEAD --force
-          # 同步所有 tags
+          
+          # Gitee Token 支持两种认证方式：
+          # 1) https://oauth2:<TOKEN>@gitee.com/xxx/xxx.git
+          # 2) https://<USER>:<TOKEN>@gitee.com/xxx/xxx.git
+          # 这里优先使用 oauth2:<TOKEN>，避免用户名大小写或空间地址不一致触发 'token username invalid'
+          GITEE_REMOTE_URL="https://oauth2:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
+          
+          # 测试远程仓库是否已存在并可访问
+          if ! git ls-remote "$GITEE_REMOTE_URL" > /dev/null 2>&1; then
+            echo "::warning ::提示：未能在 Gitee 访问到仓库 ${GITEE_USER}/${GITEE_REPO}。"
+            echo "请确保已在 Gitee (gitee.com) 上新建或导入了该仓库，并且空间名与仓库名正确！"
+            echo "尝试使用用户名直连格式再次检测..."
+            GITEE_REMOTE_URL="https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
+          fi
+
+          git remote add gitee "$GITEE_REMOTE_URL" || git remote set-url gitee "$GITEE_REMOTE_URL"
+          
+          echo "正在推送分支到 Gitee..."
+          git push -u gitee HEAD || git push -u gitee HEAD --force || echo "分支推送完成或跳过"
+          
+          echo "正在同步 Tags 到 Gitee..."
           git push gitee --tags --force || true
 
   # 任务二：编译构建 Android APK 并自动上传到 Gitee Release
@@ -105,7 +122,7 @@ jobs:
         if: env.GITEE_TOKEN != ''
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITEE_USER: ${{ secrets.GITEE_USER || 'ZhaoChenKe' }}
+          GITEE_USER: ${{ secrets.GITEE_USER || 'zhao-chenke' }}
           GITEE_REPO: ${{ secrets.GITEE_REPO || 'Screenshot-Manager' }}
           TAG_NAME: ${{ steps.apk_meta.outputs.tag_name }}
           APK_PATH: ${{ steps.apk_meta.outputs.apk_path }}

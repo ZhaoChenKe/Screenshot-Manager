@@ -24,10 +24,10 @@ class AppUpdateManager(private val context: Context) {
     companion object {
         private const val TAG = "AppUpdateManager"
         const val DEFAULT_CHECK_INTERVAL_DAYS = 7 // 默认一周检查一次
-        const val GITEE_OWNER = "ZhaoChenKe"
+        const val GITEE_OWNER = "zhao-chenke"
         const val GITEE_REPO = "Screenshot-Manager"
         // 默认更新源：Gitee Releases 最新发布版本接口（国内直连、极速无网络阻碍）
-        const val DEFAULT_UPDATE_URL = "https://gitee.com/api/v5/repos/ZhaoChenKe/Screenshot-Manager/releases/latest"
+        const val DEFAULT_UPDATE_URL = "https://gitee.com/api/v5/repos/zhao-chenke/Screenshot-Manager/releases/latest"
         // GitHub 备用接口
         const val GITHUB_BACKUP_UPDATE_URL = "https://api.github.com/repos/ZhaoChenKe/Screenshot-Manager/releases/latest"
         const val DEMO_UPDATE_URL = DEFAULT_UPDATE_URL

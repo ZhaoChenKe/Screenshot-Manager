@@ -666,7 +666,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     Text(
-                        text = "默认通过 Gitee 官方仓库 (ZhaoChenKe/Screenshot-Manager) Releases 检测最新版本并国内极速下载 APK。亦支持切换为 GitHub Releases 或自建服务器 version.json 链接。",
+                        text = "默认通过 Gitee 官方仓库 (zhao-chenke/Screenshot-Manager) Releases 检测最新版本并国内极速下载 APK。亦支持切换为 GitHub Releases 或自建服务器 version.json 链接。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -674,7 +674,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = customUrlInput,
                         onValueChange = { customUrlInput = it },
-                        placeholder = { Text("https://gitee.com/api/v5/repos/ZhaoChenKe/Screenshot-Manager/releases/latest") },
+                        placeholder = { Text("https://gitee.com/api/v5/repos/zhao-chenke/Screenshot-Manager/releases/latest") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
