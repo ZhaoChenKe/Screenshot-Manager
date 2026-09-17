@@ -22,15 +22,21 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,7 +65,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.ui.components.UpdateDialog
 import com.example.ui.viewmodel.ScreenshotViewModel
+import com.example.update.DownloadState
+import com.example.update.UpdateCheckResult
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,12 +77,57 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
+    val updateCheckResult by viewModel.updateCheckResult.collectAsStateWithLifecycle()
+    val downloadState by viewModel.downloadState.collectAsStateWithLifecycle()
+    val showUpdateDialog by viewModel.showUpdateDialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showApiKeyDialog by remember { mutableStateOf(false) }
     var apiKeyInput by remember { mutableStateOf(prefs.customApiKey) }
 
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showFrequencyDialog by remember { mutableStateOf(false) }
+    var showCustomUrlDialog by remember { mutableStateOf(false) }
+    var customUrlInput by remember { mutableStateOf(prefs.customUpdateUrl) }
+
+    // Toast feedback for manual update check results
+    LaunchedEffect(updateCheckResult) {
+        when (updateCheckResult) {
+            is UpdateCheckResult.UpToDate -> {
+                Toast.makeText(context, "当前已是最新版本 (v${(updateCheckResult as UpdateCheckResult.UpToDate).currentVersionName})", Toast.LENGTH_SHORT).show()
+            }
+            is UpdateCheckResult.Error -> {
+                Toast.makeText(context, (updateCheckResult as UpdateCheckResult.Error).message, Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
+        }
+    }
+
+    val lastCheckText = remember(prefs.lastUpdateCheckTime) {
+        if (prefs.lastUpdateCheckTime <= 0L) {
+            "从未检查"
+        } else {
+            val diff = System.currentTimeMillis() - prefs.lastUpdateCheckTime
+            val minutes = diff / (60 * 1000)
+            val hours = diff / (60 * 60 * 1000)
+            val days = diff / (24 * 60 * 60 * 1000)
+            when {
+                minutes < 1 -> "刚刚"
+                minutes < 60 -> "${minutes}分钟前"
+                hours < 24 -> "${hours}小时前"
+                else -> "${days}天前"
+            }
+        }
+    }
+
+    val frequencyText = when (prefs.autoCheckUpdateFrequencyDays) {
+        1 -> "每天检查一次"
+        7 -> "每周检查一次 (默认)"
+        14 -> "每两周检查一次"
+        30 -> "每月检查一次"
+        0 -> "从不自动检查"
+        else -> "每${prefs.autoCheckUpdateFrequencyDays}天检查一次"
+    }
 
     Scaffold(
         topBar = {
@@ -315,43 +370,158 @@ fun SettingsScreen(
                 }
             }
 
-            // 5. About & Architecture
-            Text(text = "关于", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            // 5. Version & Update & About
+            Text(text = "版本与关于", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    // App Brand & Version info
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_app_brand_logo_tintable),
                                 contentDescription = "Logo",
                                 tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(26.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = "截图管家", fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(text = "截图管家", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    Text(
+                                        text = "独立分发版",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                             Text(
-                                text = "版本 1.0.0 · 极简设计",
+                                text = "当前版本 v1.0.0 (构建 1)",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    // 1) Manual Check Update button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                viewModel.checkForUpdate(isManual = true, simulateIfNoUrl = true)
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (updateCheckResult is UpdateCheckResult.Checking) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.5.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.SystemUpdate,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "检查版本更新", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = "上次检查：$lastCheckText · 点击直接从手机端检测更新",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    // 2) Auto Check Frequency (Default: 1 week / 7 days)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                showFrequencyDialog = true
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "自动检查更新周期", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = frequencyText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    // 3) Custom Update Source URL (Optional)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                customUrlInput = prefs.customUpdateUrl
+                                showCustomUrlDialog = true
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Link,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "自建分发服务源 (可选)", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = if (prefs.customUpdateUrl.isBlank()) "未配置（使用内置演示通道，可填入自定义 version.json 地址）" else prefs.customUpdateUrl,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
                     Text(
-                        text = "本地离线优先 · ML Kit OCR 识别 · Room 本地数据库 · 可选 Gemini 语义结构化",
+                        text = "无需应用商店 · 手机端直连下载 APK · 本地安全沙箱与 FileProvider 静默安装",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -438,6 +608,121 @@ fun SettingsScreen(
                 TextButton(onClick = { showThemeDialog = false }) {
                     Text("关闭")
                 }
+            }
+        )
+    }
+
+    // Auto Check Frequency Dialog
+    if (showFrequencyDialog) {
+        AlertDialog(
+            onDismissRequest = { showFrequencyDialog = false },
+            title = { Text("自动检查更新周期") },
+            text = {
+                Column {
+                    listOf(
+                        7 to "每周检查一次 (默认推荐)",
+                        1 to "每天检查一次",
+                        14 to "每两周检查一次",
+                        30 to "每月检查一次",
+                        0 to "从不自动检查 (仅支持手动检查)"
+                    ).forEach { (days, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setAutoCheckUpdateFrequencyDays(days)
+                                    showFrequencyDialog = false
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = prefs.autoCheckUpdateFrequencyDays == days,
+                                onClick = {
+                                    viewModel.setAutoCheckUpdateFrequencyDays(days)
+                                    showFrequencyDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFrequencyDialog = false }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
+
+    // Custom Update URL Dialog
+    if (showCustomUrlDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomUrlDialog = false },
+            title = { Text("自建分发服务源") },
+            text = {
+                Column {
+                    Text(
+                        text = "您可以在您的服务器或 GitHub Raw 部署 version.json，填写对应的 HTTP/HTTPS 地址。应用将直连下载 APK 并调起手机系统安装器。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = customUrlInput,
+                        onValueChange = { customUrlInput = it },
+                        placeholder = { Text("https://your-domain.com/version.json") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.setCustomUpdateUrl(customUrlInput.trim())
+                        showCustomUrlDialog = false
+                        Toast.makeText(context, "已保存自定义更新源", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                Row {
+                    if (prefs.customUpdateUrl.isNotBlank()) {
+                        TextButton(
+                            onClick = {
+                                customUrlInput = ""
+                                viewModel.setCustomUpdateUrl("")
+                                showCustomUrlDialog = false
+                                Toast.makeText(context, "已恢复默认更新源", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Text("恢复默认")
+                        }
+                    }
+                    TextButton(onClick = { showCustomUrlDialog = false }) {
+                        Text("取消")
+                    }
+                }
+            }
+        )
+    }
+
+    // App Update Dialog (has update found)
+    if (showUpdateDialog && updateCheckResult is UpdateCheckResult.HasUpdate) {
+        val updateInfo = (updateCheckResult as UpdateCheckResult.HasUpdate).updateInfo
+        UpdateDialog(
+            updateInfo = updateInfo,
+            downloadState = downloadState,
+            onStartDownload = {
+                viewModel.startDownloadAndInstall(updateInfo)
+            },
+            onDismiss = {
+                viewModel.dismissUpdateDialog()
             }
         )
     }

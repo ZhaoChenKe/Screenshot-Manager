@@ -86,8 +86,10 @@ import com.example.ui.components.EmptyStateView
 import com.example.ui.components.ProgressBarCard
 import com.example.ui.components.ScreenshotCard
 import com.example.ui.components.StatCard
+import com.example.ui.components.UpdateDialog
 import com.example.ui.util.CategoryUiHelper
 import com.example.ui.viewmodel.ScreenshotViewModel
+import com.example.update.UpdateCheckResult
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +108,9 @@ fun HomeScreen(
     val categoriesWithCount by viewModel.categoriesWithCount.collectAsStateWithLifecycle()
     val duplicateGroups by viewModel.duplicateGroups.collectAsStateWithLifecycle()
     val similarGroups by viewModel.similarGroups.collectAsStateWithLifecycle()
+    val showUpdateDialog by viewModel.showUpdateDialog.collectAsStateWithLifecycle()
+    val updateCheckResult by viewModel.updateCheckResult.collectAsStateWithLifecycle()
+    val downloadState by viewModel.downloadState.collectAsStateWithLifecycle()
 
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var isBatchMode by remember { mutableStateOf(false) }
@@ -810,6 +815,20 @@ fun HomeScreen(
                 TextButton(onClick = { showBatchDeleteDialog = false }) {
                     Text("取消")
                 }
+            }
+        )
+    }
+
+    if (showUpdateDialog && updateCheckResult is UpdateCheckResult.HasUpdate) {
+        val updateInfo = (updateCheckResult as UpdateCheckResult.HasUpdate).updateInfo
+        UpdateDialog(
+            updateInfo = updateInfo,
+            downloadState = downloadState,
+            onStartDownload = {
+                viewModel.startDownloadAndInstall(updateInfo)
+            },
+            onDismiss = {
+                viewModel.dismissUpdateDialog()
             }
         )
     }

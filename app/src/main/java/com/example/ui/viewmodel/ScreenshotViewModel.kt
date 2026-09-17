@@ -11,6 +11,10 @@ import com.example.data.model.ScreenshotWithDetails
 import com.example.data.preferences.UserPreferences
 import com.example.data.repository.ProcessingProgress
 import com.example.similarity.SimilarGroup
+import com.example.update.AppUpdateManager
+import com.example.update.DownloadState
+import com.example.update.UpdateCheckResult
+import com.example.update.UpdateInfo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -56,9 +60,27 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
                 customApiKey = "",
                 aiProvider = "gemini",
                 themeMode = "system",
-                hasCompletedFirstScan = false
+                hasCompletedFirstScan = false,
+                lastUpdateCheckTime = 0L,
+                autoCheckUpdateFrequencyDays = 7,
+                customUpdateUrl = ""
             )
         )
+
+    val appUpdateManager = AppUpdateManager(application)
+
+    private val _updateCheckResult = MutableStateFlow<UpdateCheckResult>(UpdateCheckResult.Idle)
+    val updateCheckResult: StateFlow<UpdateCheckResult> = _updateCheckResult.asStateFlow()
+
+    private val _downloadState = MutableStateFlow<DownloadState>(DownloadState.Idle)
+    val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
+
+    private val _showUpdateDialog = MutableStateFlow(false)
+    val showUpdateDialog: StateFlow<Boolean> = _showUpdateDialog.asStateFlow()
+
+    init {
+        checkUpdateOnStartup()
+    }
 
     val searchQuery = MutableStateFlow("")
     val selectedSearchCategory = MutableStateFlow<String?>(null)
@@ -220,6 +242,69 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
     fun setThemeMode(mode: String) {
         viewModelScope.launch {
             preferencesRepo.setThemeMode(mode)
+        }
+    }
+
+    fun checkForUpdate(isManual: Boolean = false, simulateIfNoUrl: Boolean = false) {
+        viewModelScope.launch {
+            _updateCheckResult.value = UpdateCheckResult.Checking
+            val prefs = userPreferences.value
+            val result = appUpdateManager.checkForUpdate(prefs.customUpdateUrl, simulateIfNoUrl = simulateIfNoUrl)
+            _updateCheckResult.value = result
+            preferencesRepo.setLastUpdateCheckTime(System.currentTimeMillis())
+
+            if (result is UpdateCheckResult.HasUpdate) {
+                _showUpdateDialog.value = true
+            }
+        }
+    }
+
+    fun checkUpdateOnStartup() {
+        viewModelScope.launch {
+            val prefs = userPreferences.value
+            if (appUpdateManager.shouldAutoCheck(prefs.lastUpdateCheckTime, prefs.autoCheckUpdateFrequencyDays)) {
+                val result = appUpdateManager.checkForUpdate(prefs.customUpdateUrl, simulateIfNoUrl = false)
+                _updateCheckResult.value = result
+                preferencesRepo.setLastUpdateCheckTime(System.currentTimeMillis())
+                if (result is UpdateCheckResult.HasUpdate) {
+                    _showUpdateDialog.value = true
+                }
+            }
+        }
+    }
+
+    fun dismissUpdateDialog() {
+        _showUpdateDialog.value = false
+        _downloadState.value = DownloadState.Idle
+    }
+
+    fun startDownloadAndInstall(updateInfo: UpdateInfo) {
+        viewModelScope.launch {
+            _downloadState.value = DownloadState.Downloading(0, 0, (updateInfo.fileSizeMb * 1024 * 1024).toLong())
+            val result = appUpdateManager.downloadAndInstallApk(updateInfo) { percent, downloaded, total ->
+                _downloadState.value = DownloadState.Downloading(percent, downloaded, total)
+            }
+            if (result.isSuccess) {
+                val file = result.getOrNull()
+                _downloadState.value = DownloadState.Completed(
+                    Uri.fromFile(file),
+                    file?.absolutePath ?: ""
+                )
+            } else {
+                _downloadState.value = DownloadState.Failed(result.exceptionOrNull()?.localizedMessage ?: "下载失败")
+            }
+        }
+    }
+
+    fun setAutoCheckUpdateFrequencyDays(days: Int) {
+        viewModelScope.launch {
+            preferencesRepo.setAutoCheckUpdateFrequencyDays(days)
+        }
+    }
+
+    fun setCustomUpdateUrl(url: String) {
+        viewModelScope.launch {
+            preferencesRepo.setCustomUpdateUrl(url)
         }
     }
 }

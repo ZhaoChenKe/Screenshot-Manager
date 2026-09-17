@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +21,10 @@ data class UserPreferences(
     val customApiKey: String,
     val aiProvider: String,
     val themeMode: String,
-    val hasCompletedFirstScan: Boolean
+    val hasCompletedFirstScan: Boolean,
+    val lastUpdateCheckTime: Long = 0L,
+    val autoCheckUpdateFrequencyDays: Int = 7,
+    val customUpdateUrl: String = ""
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -33,6 +37,9 @@ class UserPreferencesRepository(private val context: Context) {
         val AI_PROVIDER = stringPreferencesKey("ai_provider")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HAS_COMPLETED_FIRST_SCAN = booleanPreferencesKey("has_completed_first_scan")
+        val LAST_UPDATE_CHECK_TIME = longPreferencesKey("last_update_check_time")
+        val AUTO_CHECK_UPDATE_FREQUENCY_DAYS = intPreferencesKey("auto_check_update_frequency_days")
+        val CUSTOM_UPDATE_URL = stringPreferencesKey("custom_update_url")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
@@ -43,8 +50,29 @@ class UserPreferencesRepository(private val context: Context) {
             customApiKey = preferences[PreferencesKeys.CUSTOM_API_KEY] ?: "",
             aiProvider = preferences[PreferencesKeys.AI_PROVIDER] ?: "gemini",
             themeMode = preferences[PreferencesKeys.THEME_MODE] ?: "system",
-            hasCompletedFirstScan = preferences[PreferencesKeys.HAS_COMPLETED_FIRST_SCAN] ?: false
+            hasCompletedFirstScan = preferences[PreferencesKeys.HAS_COMPLETED_FIRST_SCAN] ?: false,
+            lastUpdateCheckTime = preferences[PreferencesKeys.LAST_UPDATE_CHECK_TIME] ?: 0L,
+            autoCheckUpdateFrequencyDays = preferences[PreferencesKeys.AUTO_CHECK_UPDATE_FREQUENCY_DAYS] ?: 7,
+            customUpdateUrl = preferences[PreferencesKeys.CUSTOM_UPDATE_URL] ?: ""
         )
+    }
+
+    suspend fun setLastUpdateCheckTime(timestamp: Long) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_UPDATE_CHECK_TIME] = timestamp
+        }
+    }
+
+    suspend fun setAutoCheckUpdateFrequencyDays(days: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTO_CHECK_UPDATE_FREQUENCY_DAYS] = days
+        }
+    }
+
+    suspend fun setCustomUpdateUrl(url: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CUSTOM_UPDATE_URL] = url
+        }
     }
 
     suspend fun setAutoScanNew(enabled: Boolean) {
