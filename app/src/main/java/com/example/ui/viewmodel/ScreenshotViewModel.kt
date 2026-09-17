@@ -188,16 +188,49 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun deleteScreenshot(screenshotId: Long, onDeleted: (() -> Unit)? = null) {
+        // Optimistic UI updates for immediate responsiveness
+        _similarGroups.value = _similarGroups.value.mapNotNull { group ->
+            val remainingItems = group.items.filter { it.id != screenshotId }
+            if (remainingItems.size > 1) {
+                group.copy(
+                    items = remainingItems,
+                    recommendedKeepId = if (group.recommendedKeepId == screenshotId) remainingItems.first().id else group.recommendedKeepId
+                )
+            } else null
+        }
+        _duplicateGroups.value = _duplicateGroups.value.mapNotNull { list ->
+            val remaining = list.filter { it.id != screenshotId }
+            if (remaining.size > 1) remaining else null
+        }
+
         viewModelScope.launch {
             repository.deleteScreenshot(screenshotId)
+            // Re-verify similarity groupings in background to ensure strict accuracy
             executeCheckDuplicates()
             onDeleted?.invoke()
         }
     }
 
     fun deleteScreenshots(ids: List<Long>, onDeleted: (() -> Unit)? = null) {
+        val idSet = ids.toSet()
+        // Optimistic UI updates for immediate responsiveness
+        _similarGroups.value = _similarGroups.value.mapNotNull { group ->
+            val remainingItems = group.items.filter { it.id !in idSet }
+            if (remainingItems.size > 1) {
+                group.copy(
+                    items = remainingItems,
+                    recommendedKeepId = if (group.recommendedKeepId in idSet) remainingItems.first().id else group.recommendedKeepId
+                )
+            } else null
+        }
+        _duplicateGroups.value = _duplicateGroups.value.mapNotNull { list ->
+            val remaining = list.filter { it.id !in idSet }
+            if (remaining.size > 1) remaining else null
+        }
+
         viewModelScope.launch {
             repository.deleteScreenshots(ids)
+            // Re-verify similarity groupings in background to ensure strict accuracy
             executeCheckDuplicates()
             onDeleted?.invoke()
         }
