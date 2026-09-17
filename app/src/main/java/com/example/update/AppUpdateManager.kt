@@ -274,8 +274,9 @@ class AppUpdateManager(private val context: Context) {
 
     /**
      * 下载 APK 文件并在完成后调起系统安装程序
+     * 支持 GitHub 原始直链与国内镜像加速双通道，杜绝因下载失败退回到旧版本安装包
      */
-    suspend fun downloadAndInstallApk(
+     suspend fun downloadAndInstallApk(
         updateInfo: UpdateInfo,
         onProgress: (percent: Int, downloadedBytes: Long, totalBytes: Long) -> Unit
     ): Result<File> = withContext(Dispatchers.IO) {
@@ -284,15 +285,31 @@ class AppUpdateManager(private val context: Context) {
                 if (!exists()) mkdirs()
             }
             val apkFile = File(updatesDir, "screenshot_manager_v${updateInfo.versionName}.apk")
+            if (apkFile.exists()) {
+                apkFile.delete() // 确保清理旧缓存，防止安装旧文件
+            }
 
-            val downloadUrl = updateInfo.downloadUrl
+            val rawUrl = updateInfo.downloadUrl
+            val candidateUrls = mutableListOf<String>()
 
-            if (downloadUrl.startsWith("http://") || downloadUrl.startsWith("https://")) {
-                var isRealDownloadSuccess = false
+            if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+                // 如果是 GitHub release 链接，优先尝试国内高速镜像，再尝试原链接
+                if (rawUrl.contains("github.com") && rawUrl.contains("/releases/download/")) {
+                    candidateUrls.add("https://ghproxy.net/$rawUrl")
+                    candidateUrls.add("https://mirror.ghproxy.com/$rawUrl")
+                }
+                candidateUrls.add(rawUrl)
+            }
+
+            var isRealDownloadSuccess = false
+            var lastError: Exception? = null
+
+            for (urlToTry in candidateUrls) {
                 try {
-                    val connection = openConnectionWithRedirects(downloadUrl)
+                    Log.d(TAG, "Trying to download APK from: $urlToTry")
+                    val connection = openConnectionWithRedirects(urlToTry)
 
-                    if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    if (connection.responseCode in 200..299) {
                         val totalBytes = connection.contentLength.toLong().let { if (it <= 0) (updateInfo.fileSizeMb * 1024 * 1024).toLong() else it }
                         val input: InputStream = connection.inputStream
                         val output = FileOutputStream(apkFile)
@@ -313,50 +330,30 @@ class AppUpdateManager(private val context: Context) {
                         output.flush()
                         output.close()
                         input.close()
-                        isRealDownloadSuccess = true
+
+                        // 验证下载文件大小（至少大于 5MB，避免下载到 404/html 错误页面）
+                        if (apkFile.length() > 5 * 1024 * 1024) {
+                            isRealDownloadSuccess = true
+                            Log.d(TAG, "Successfully downloaded APK, size: ${apkFile.length()} bytes")
+                            break
+                        } else {
+                            Log.w(TAG, "Downloaded file too small (${apkFile.length()} bytes), might be error page")
+                            apkFile.delete()
+                        }
+                    } else {
+                        Log.w(TAG, "HTTP error ${connection.responseCode} from $urlToTry")
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Real download failed, falling back to simulated download: ${e.message}")
+                    lastError = e
+                    Log.w(TAG, "Download attempt failed for $urlToTry: ${e.message}")
+                    if (apkFile.exists()) apkFile.delete()
                 }
+            }
 
-                // 如果由于测试 URL 不可达，模拟平滑进度下载，确保在真机/模拟器上能完成流程测试
-                if (!isRealDownloadSuccess) {
-                    val simulatedTotal = (updateInfo.fileSizeMb * 1024 * 1024).toLong().coerceAtLeast(10 * 1024 * 1024L)
-                    for (step in 1..20) {
-                        delay(70)
-                        val percent = step * 5
-                        val currentBytes = (simulatedTotal * percent) / 100
-                        withContext(Dispatchers.Main) {
-                            onProgress(percent, currentBytes, simulatedTotal)
-                        }
-                    }
-                    // 拷贝当前正在运行的 base.apk 到 updates 目录下作为有效 apk 文件供安装器解析
-                    try {
-                        val currentAppApk = File(context.applicationInfo.sourceDir)
-                        if (currentAppApk.exists()) {
-                            currentAppApk.copyTo(apkFile, overwrite = true)
-                        } else {
-                            apkFile.writeBytes(ByteArray(1024))
-                        }
-                    } catch (e: Exception) {
-                        apkFile.writeBytes(ByteArray(1024))
-                    }
-                }
-            } else {
-                // 演示模式直接模拟下载
-                val simulatedTotal = (updateInfo.fileSizeMb * 1024 * 1024).toLong().coerceAtLeast(10 * 1024 * 1024L)
-                for (step in 1..20) {
-                    delay(60)
-                    val percent = step * 5
-                    val currentBytes = (simulatedTotal * percent) / 100
-                    withContext(Dispatchers.Main) {
-                        onProgress(percent, currentBytes, simulatedTotal)
-                    }
-                }
-                val currentAppApk = File(context.applicationInfo.sourceDir)
-                if (currentAppApk.exists()) {
-                    currentAppApk.copyTo(apkFile, overwrite = true)
-                }
+            if (!isRealDownloadSuccess) {
+                val errorMsg = lastError?.localizedMessage ?: "网络连接超时，请检查网络或点击在浏览器中下载"
+                Log.e(TAG, "All download attempts failed: $errorMsg")
+                return@withContext Result.failure(Exception("下载安装包失败: $errorMsg"))
             }
 
             // 完成下载，在主线程调起安装

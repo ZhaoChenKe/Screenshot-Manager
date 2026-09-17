@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -26,6 +29,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -180,12 +185,29 @@ fun UpdateDialog(
                         )
                     }
                 } else if (downloadState is DownloadState.Failed) {
+                    val context = LocalContext.current
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "下载失败: ${downloadState.error}",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            try {
+                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(updateInfo.downloadUrl)).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(browserIntent)
+                            } catch (_: Exception) {}
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(imageVector = Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("使用手机浏览器下载", fontSize = 13.sp)
+                    }
                 }
             }
         },
