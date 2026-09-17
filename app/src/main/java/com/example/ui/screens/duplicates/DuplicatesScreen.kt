@@ -56,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,6 +104,17 @@ fun DuplicatesScreen(
     var selectedFilter by remember { mutableStateOf(DuplicateFilterTab.ALL) }
     var selectedIds by remember { mutableStateOf(setOf<Long>()) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var singleItemToDelete by remember { mutableStateOf<com.example.data.model.ScreenshotEntity?>(null) }
+
+    val allGroupItemIds = remember(similarGroups) {
+        similarGroups.flatMap { it.items }.map { it.id }.toSet()
+    }
+
+    LaunchedEffect(allGroupItemIds) {
+        if (selectedIds.any { it !in allGroupItemIds }) {
+            selectedIds = selectedIds.filter { it in allGroupItemIds }.toSet()
+        }
+    }
 
     val filteredGroups = remember(similarGroups, selectedFilter) {
         when (selectedFilter) {
@@ -399,11 +411,8 @@ fun DuplicatesScreen(
                             selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
                         },
                         onItemClick = onNavigateToDetail,
-                        onSingleDelete = { id ->
-                            viewModel.deleteScreenshot(id) {
-                                selectedIds = selectedIds - id
-                                Toast.makeText(context, "已删除截图", Toast.LENGTH_SHORT).show()
-                            }
+                        onSingleDelete = { item ->
+                            singleItemToDelete = item
                         }
                     )
                 }
@@ -421,12 +430,33 @@ fun DuplicatesScreen(
             onConfirm = {
                 val idsToDelete = selectedIds.toList()
                 showDeleteConfirmDialog = false
+                selectedIds = emptySet()
                 viewModel.deleteScreenshots(idsToDelete) {
-                    selectedIds = emptySet()
                     Toast.makeText(context, "已成功清理 ${idsToDelete.size} 张截图，释放空间 $formattedSize", Toast.LENGTH_SHORT).show()
                 }
             },
             onDismiss = { showDeleteConfirmDialog = false }
+        )
+    }
+
+    // 单张截图删除确认对话框
+    if (singleItemToDelete != null) {
+        val item = singleItemToDelete!!
+        val formattedSize = Formatter.formatFileSize(context, item.fileSize)
+        DeleteConfirmDialog(
+            title = "确认删除此截图？",
+            message = "此截图文件将从手机相册与截图管家中彻底删除，无法恢复。",
+            freedSpaceText = formattedSize,
+            confirmButtonText = "确认删除",
+            onConfirm = {
+                val idToDelete = item.id
+                singleItemToDelete = null
+                viewModel.deleteScreenshot(idToDelete) {
+                    selectedIds = selectedIds - idToDelete
+                    Toast.makeText(context, "已删除截图，释放空间 $formattedSize", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onDismiss = { singleItemToDelete = null }
         )
     }
 }
@@ -437,7 +467,7 @@ fun SimilarGroupCard(
     selectedIds: Set<Long>,
     onToggleSelect: (Long) -> Unit,
     onItemClick: (Long) -> Unit,
-    onSingleDelete: (Long) -> Unit
+    onSingleDelete: (com.example.data.model.ScreenshotEntity) -> Unit
 ) {
     val isExact = group.category == SimilarityCategory.EXACT_DUPLICATE
     val badgeBg = if (isExact) Color(0xFFFFEDD5) else Color(0xFFEDE9FE)
@@ -502,7 +532,7 @@ fun SimilarGroupCard(
                         isSelected = isSelected,
                         onToggleSelect = { onToggleSelect(item.id) },
                         onItemClick = { onItemClick(item.id) },
-                        onDeleteClick = { onSingleDelete(item.id) }
+                        onDeleteClick = { onSingleDelete(item) }
                     )
                 }
             }
@@ -546,7 +576,9 @@ private fun SimilarItemCard(
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(item.uri)
+                        .size(300, 360)
                         .crossfade(true)
+                        .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                         .build(),
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop,

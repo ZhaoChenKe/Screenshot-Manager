@@ -203,19 +203,37 @@ class AppUpdateManager(private val context: Context) {
     }
 
     /**
-     * 判断远程版本是否高于本地版本（支持语义化版本对比，如 1.0.1 > 1.0.0）
+     * 判断远程版本是否高于本地版本（支持语义化版本对比，如 1.0.3 > 1.0.2）
      */
     private fun isNewerVersion(remoteTag: String, currentVerName: String, remoteCode: Int, currentCode: Int): Boolean {
-        if (remoteCode > currentCode && remoteCode > 0 && currentCode > 0) return true
-        val rParts = remoteTag.removePrefix("v").removePrefix("V").split(".").mapNotNull { it.toIntOrNull() }
-        val cParts = currentVerName.removePrefix("v").removePrefix("V").split(".").mapNotNull { it.toIntOrNull() }
-        val maxLen = maxOf(rParts.size, cParts.size)
-        for (i in 0 until maxLen) {
-            val r = rParts.getOrElse(i) { 0 }
-            val c = cParts.getOrElse(i) { 0 }
-            if (r > c) return true
-            if (r < c) return false
+        val cleanRemoteTag = remoteTag.removePrefix("v").removePrefix("V").trim()
+        val cleanCurrentName = currentVerName.removePrefix("v").removePrefix("V").trim()
+
+        // 1. 如果版本号完全相同，直接判定无更新
+        if (cleanRemoteTag.equals(cleanCurrentName, ignoreCase = true)) {
+            return false
         }
+
+        // 2. 语义化版本分段比较（优先级最高，避免自动生成的 versionCode 算法误差）
+        val rParts = cleanRemoteTag.split(".").mapNotNull { it.toIntOrNull() }
+        val cParts = cleanCurrentName.split(".").mapNotNull { it.toIntOrNull() }
+        if (rParts.isNotEmpty() && cParts.isNotEmpty()) {
+            val maxLen = maxOf(rParts.size, cParts.size)
+            for (i in 0 until maxLen) {
+                val r = rParts.getOrElse(i) { 0 }
+                val c = cParts.getOrElse(i) { 0 }
+                if (r > c) return true
+                if (r < c) return false
+            }
+            // 语义化完全一致
+            return false
+        }
+
+        // 3. Fallback: 如果无法进行语义化比较，再比较 versionCode
+        if (remoteCode > currentCode && remoteCode > 0 && currentCode > 0) {
+            return true
+        }
+
         return false
     }
 

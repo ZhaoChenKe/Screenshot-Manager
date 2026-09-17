@@ -119,6 +119,17 @@ fun HomeScreen(
     var selectedBatchIds by remember { mutableStateOf(setOf<Long>()) }
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
 
+    val existingIds = remember(recentScreenshots) { recentScreenshots.map { it.screenshot.id }.toSet() }
+    val validSelectedBatchIds = remember(selectedBatchIds, existingIds) {
+        selectedBatchIds.filter { it in existingIds }.toSet()
+    }
+
+    LaunchedEffect(existingIds) {
+        if (selectedBatchIds.any { it !in existingIds }) {
+            selectedBatchIds = selectedBatchIds.filter { it in existingIds }.toSet()
+        }
+    }
+
     val filteredScreenshots = remember(recentScreenshots, selectedCategoryId) {
         if (selectedCategoryId == null) {
             recentScreenshots
@@ -173,7 +184,7 @@ fun HomeScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "已选择 ${selectedBatchIds.size} 项",
+                            text = "已选择 ${validSelectedBatchIds.size} 项",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -189,14 +200,14 @@ fun HomeScreen(
                     actions = {
                         val allFilteredIds = filteredScreenshots.map { it.screenshot.id }.toSet()
                         TextButton(onClick = {
-                            selectedBatchIds = if (selectedBatchIds.size == allFilteredIds.size && allFilteredIds.isNotEmpty()) {
+                            selectedBatchIds = if (validSelectedBatchIds.size == allFilteredIds.size && allFilteredIds.isNotEmpty()) {
                                 emptySet()
                             } else {
                                 allFilteredIds
                             }
                         }) {
                             Text(
-                                text = if (selectedBatchIds.size == allFilteredIds.size && allFilteredIds.isNotEmpty()) "清空" else "全选",
+                                text = if (validSelectedBatchIds.size == allFilteredIds.size && allFilteredIds.isNotEmpty()) "清空" else "全选",
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -292,7 +303,7 @@ fun HomeScreen(
         },
         bottomBar = {
             AnimatedVisibility(
-                visible = isBatchMode && selectedBatchIds.isNotEmpty(),
+                visible = isBatchMode && validSelectedBatchIds.isNotEmpty(),
                 enter = slideInVertically(initialOffsetY = { it }),
                 exit = slideOutVertically(targetOffsetY = { it })
             ) {
@@ -309,7 +320,7 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "已选 ${selectedBatchIds.size} 张截图",
+                            text = "已选 ${validSelectedBatchIds.size} 张截图",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -793,18 +804,18 @@ fun HomeScreen(
     }
 
     if (showBatchDeleteDialog) {
-        val totalBytes = recentScreenshots.filter { it.screenshot.id in selectedBatchIds }.sumOf { it.screenshot.fileSize }
+        val totalBytes = recentScreenshots.filter { it.screenshot.id in validSelectedBatchIds }.sumOf { it.screenshot.fileSize }
         val formattedSize = Formatter.formatFileSize(context, totalBytes)
         DeleteConfirmDialog(
-            title = "确认批量删除 ${selectedBatchIds.size} 张截图？",
+            title = "确认批量删除 ${validSelectedBatchIds.size} 张截图？",
             message = "所选截图将从设备相册中彻底移除并释放存储空间。此操作无法撤销。",
             freedSpaceText = formattedSize,
-            confirmButtonText = "确认删除 (${selectedBatchIds.size}张)",
+            confirmButtonText = "确认删除 (${validSelectedBatchIds.size}张)",
             onConfirm = {
-                val idsToDelete = selectedBatchIds.toList()
+                val idsToDelete = validSelectedBatchIds.toList()
                 showBatchDeleteDialog = false
+                selectedBatchIds = emptySet()
                 viewModel.deleteScreenshots(idsToDelete) {
-                    selectedBatchIds = emptySet()
                     isBatchMode = false
                     Toast.makeText(context, "已成功删除 ${idsToDelete.size} 张截图，释放空间 $formattedSize", Toast.LENGTH_SHORT).show()
                 }

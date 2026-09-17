@@ -244,18 +244,21 @@ fun ScreenshotDetailScreen(
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(screenshot.uri)
-                            .crossfade(true)
+                            .crossfade(false)
+                            .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                            .precision(coil.size.Precision.INEXACT)
                             .build(),
                         contentDescription = screenshot.title,
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer(
-                                scaleX = scale,
-                                scaleY = scale,
-                                translationX = offset.x,
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                translationX = offset.x
                                 translationY = offset.y
-                            )
+                            }
                     )
                 }
 

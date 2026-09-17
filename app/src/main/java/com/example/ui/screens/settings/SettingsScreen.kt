@@ -64,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.BuildConfig
 import com.example.R
 import com.example.ui.components.UpdateDialog
 import com.example.ui.viewmodel.ScreenshotViewModel
@@ -414,7 +415,7 @@ fun SettingsScreen(
                                 }
                             }
                             Text(
-                                text = "当前版本 v1.0.0 (构建 1)",
+                                text = "当前版本 v${BuildConfig.VERSION_NAME} (构建 ${BuildConfig.VERSION_CODE})",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
