@@ -70,7 +70,7 @@ class GeminiAiService : AiService {
                 - chat (聊天)
                 - work (工作)
                 - study (学习)
-                - game (游戏)
+                - game (游戏，包含各类手游网游、对局战绩、MVP、排位结算、出装抽卡、深渊、Steam等。若包含游戏元素，即便有微信/QQ登录或游戏商城，仍必须归为 game)
                 - travel (旅行)
                 - finance (消费)
                 - express (快递)

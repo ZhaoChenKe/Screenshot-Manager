@@ -49,9 +49,42 @@ object ScreenshotClassifier {
     )
 
     private val GAME_KEYWORDS = listOf(
-        "胜率", "排位", "段位", "战绩", "赛季", "英雄", "击杀", "助攻", "王者荣耀", "原神",
-        "和平精英", "绝地求生", "英雄联盟", "steam", "switch", "ps5", "xbox", "通关", "成就",
-        "装备", "暴击", "副本", "boss"
+        // Popular games
+        "王者荣耀", "王者", "原神", "和平精英", "绝地求生", "吃鸡", "pubg", "英雄联盟", "lol",
+        "云顶之弈", "金铲铲", "金铲铲之战", "崩坏", "星穹铁道", "崩铁", "绝区零", "永劫无间",
+        "无畏契约", "瓦罗兰特", "地下城与勇士", "dnf", "穿越火线", "cf", "阴阳师", "第五人格",
+        "光遇", "蛋仔派对", "明日方舟", "鸣潮", "重返未来", "梦幻西游", "大话西游", "逆水寒",
+        "剑网3", "黑神话", "艾尔登法环", "塞尔达", "宝可梦", "pokemon", "我的世界", "minecraft",
+        "csgo", "cs2", "steam", "epic", "switch", "playstation", "ps5", "ps4", "xbox",
+        "taptap", "网易游戏", "腾讯游戏", "米哈游", "mihoyo", "暴雪", "育碧", "拳头", "riot",
+        // Match results and ranking
+        "胜利", "victory", "失败", "defeat", "平局", "mvp", "svp", "胜率", "战绩", "战报",
+        "结算", "对局详情", "排位赛", "巅峰赛", "对决", "对局", "匹配成功", "评分", "段位",
+        "最强王者", "荣耀王者", "无双王者", "星耀", "钻石", "铂金", "黄金", "白银", "青铜",
+        "赛季", "总场数", "积分", "星数", "败方mvp", "超神", "五杀", "pentakill", "四杀",
+        "quadra kill", "三杀", "triple kill", "双杀", "double kill", "第一滴血", "first blood",
+        "团灭", "ace", "大杀特杀", "主宰", "暴君", "风暴龙王", "大龙", "小龙",
+        // Battle stats & mechanics
+        "击杀", "助攻", "死亡", "kda", "参团率", "承伤", "伤害占比", "物理伤害", "法术伤害",
+        "真实伤害", "输出", "推塔", "补刀", "经济", "暴击", "穿透", "移速", "攻速", "cd",
+        "冷却时间", "技能", "大招", "被动", "普攻", "闪现", "惩击", "惩戒", "终结", "治疗术",
+        "斩杀", "血量", "生命值", "法力", "蓝条", "血条", "hp", "mp", "exp", "经验值",
+        // RPG & Gacha & Equipment
+        "出装", "装备", "铭文", "符文", "天赋", "皮肤", "限定皮肤", "抽卡", "祈愿", "招募",
+        "卡池", "单抽", "十连", "保底", "出金", "金色传说", "圣遗物", "御魂", "专武", "命之座",
+        "命座", "强化", "精炼", "突破", "升星", "觉醒", "等级", "关卡", "副本", "秘境",
+        "深境螺旋", "深渊", "深渊通关", "boss", "首通", "三星通关", "公会", "战队", "联机",
+        "组队", "开黑", "就绪", "阵容", "禁选", "挂机", "排行榜", "成就", "图鉴", "背包",
+        "道具", "战令", "通行证", "月卡", "签到", "日常任务", "自动战斗", "倍速", "fps", "ping", "帧率"
+    )
+
+    // High confidence game keywords that provide definitive indication
+    private val DEFINITIVE_GAME_KEYWORDS = listOf(
+        "王者荣耀", "原神", "英雄联盟", "和平精英", "绝地求生", "星穹铁道", "绝区零", "金铲铲",
+        "永劫无间", "无畏契约", "地下城与勇士", "穿越火线", "胜利", "victory", "失败", "defeat",
+        "mvp", "svp", "排位赛", "巅峰赛", "战绩", "段位", "kda", "参团率", "击杀", "助攻",
+        "深境螺旋", "抽卡", "圣遗物", "超神", "五杀", "pentakill", "steam", "switch", "ps5",
+        "taptap", "开黑"
     )
 
     private val TRAVEL_KEYWORDS = listOf(
@@ -84,9 +117,15 @@ object ScreenshotClassifier {
     private val PICKUP_CODE_PATTERN = Pattern.compile("(?:取件码|提货码)[:：\\s]*([A-Za-z0-9\\-]+)")
     private val DATE_PATTERN = Pattern.compile("(\\d{4}[-/年]\\d{1,2}[-/月]\\d{1,2}(?:日)?)")
 
-    fun classify(ocrText: String, fileName: String): ClassificationResult {
+    fun classify(
+        ocrText: String,
+        fileName: String,
+        width: Int = 0,
+        height: Int = 0
+    ): ClassificationResult {
         val lowerText = ocrText.lowercase()
         val lowerFileName = fileName.lowercase()
+        val isLandscape = width > 0 && height > 0 && width > height
 
         // 1. Calculate scores for each category
         val scores = mutableMapOf<String, Int>()
@@ -107,19 +146,46 @@ object ScreenshotClassifier {
             }
         }
 
-        scoreCategory("shopping", SHOPPING_KEYWORDS, 2)
-        scoreCategory("chat", CHAT_KEYWORDS, 2)
+        // Definitive game check
+        var definitiveGameHits = 0
+        for (kw in DEFINITIVE_GAME_KEYWORDS) {
+            if (lowerText.contains(kw) || lowerFileName.contains(kw)) {
+                definitiveGameHits++
+            }
+        }
+
+        scoreCategory("game", GAME_KEYWORDS, 3)
+        if (definitiveGameHits > 0) {
+            scores["game"] = (scores["game"] ?: 0) + (definitiveGameHits * 8)
+        }
+        // If the screenshot is landscape orientation (horizontal), mobile games represent 90%+
+        if (isLandscape && (scores["game"] ?: 0) > 0) {
+            scores["game"] = (scores["game"] ?: 0) + 12
+        }
+
+        // If game has strong signals, suppress false positive chat/shopping noise (e.g. "微信登录", "游戏商城")
+        val isLikelyGame = (scores["game"] ?: 0) >= 10 || definitiveGameHits > 0
+
+        scoreCategory("shopping", SHOPPING_KEYWORDS, if (isLikelyGame) 1 else 2)
+        scoreCategory("chat", CHAT_KEYWORDS, if (isLikelyGame) 1 else 2)
         scoreCategory("express", EXPRESS_KEYWORDS, 3)
         scoreCategory("order", ORDER_KEYWORDS, 2)
         scoreCategory("finance", FINANCE_KEYWORDS, 2)
         scoreCategory("work", WORK_KEYWORDS, 2)
         scoreCategory("study", STUDY_KEYWORDS, 2)
-        scoreCategory("game", GAME_KEYWORDS, 2)
         scoreCategory("travel", TRAVEL_KEYWORDS, 2)
         scoreCategory("location", LOCATION_KEYWORDS, 2)
         scoreCategory("social", SOCIAL_KEYWORDS, 2)
         scoreCategory("web", WEB_KEYWORDS, 1)
         scoreCategory("doc", DOC_KEYWORDS, 1)
+
+        if (isLikelyGame && (scores["game"] ?: 0) > 0) {
+            // Guarantee game wins if strong game triggers were detected
+            val maxOther = scores.filterKeys { it != "game" }.maxOfOrNull { it.value } ?: 0
+            if ((scores["game"] ?: 0) < maxOther) {
+                scores["game"] = maxOther + 5
+            }
+        }
 
         // Select best category
         val bestCategory = scores.maxByOrNull { it.value }?.key ?: "other"
@@ -127,9 +193,11 @@ object ScreenshotClassifier {
         // 2. Extract Tags
         val detectedTags = mutableSetOf<String>()
         val popularEntities = listOf(
-            "京东", "淘宝", "天猫", "拼多多", "微信", "QQ", "顺丰", "菜鸟", "美团", "饿了么",
-            "小红书", "抖音", "微博", "支付宝", "钉钉", "飞书", "腾讯会议", "高德地图", "携程",
-            "显卡", "手机", "电脑", "键盘", "酒店", "机票", "门票", "快递", "订单", "发票"
+            "王者荣耀", "原神", "和平精英", "绝地求生", "英雄联盟", "星穹铁道", "绝区零", "金铲铲",
+            "Steam", "Switch", "PS5", "京东", "淘宝", "天猫", "拼多多", "微信", "QQ", "顺丰",
+            "菜鸟", "美团", "饿了么", "小红书", "抖音", "微博", "支付宝", "钉钉", "飞书", "腾讯会议",
+            "高德地图", "携程", "显卡", "手机", "电脑", "键盘", "酒店", "机票", "门票", "快递",
+            "订单", "发票", "排位", "MVP", "战绩", "深渊", "抽卡"
         )
         for (entity in popularEntities) {
             if (lowerText.contains(entity.lowercase()) || lowerFileName.contains(entity.lowercase())) {
@@ -161,6 +229,37 @@ object ScreenshotClassifier {
         // 3. Extract Title
         val lines = ocrText.lines().map { it.trim() }.filter { it.isNotBlank() && it.length > 2 }
         val titleCandidate = when {
+            bestCategory == "game" -> {
+                val gameName = listOf(
+                    "王者荣耀", "原神", "和平精英", "英雄联盟", "星穹铁道", "绝区零", "金铲铲",
+                    "永劫无间", "无畏契约", "地下城与勇士", "穿越火线", "阴阳师", "光遇",
+                    "蛋仔派对", "明日方舟", "鸣潮", "Steam"
+                ).firstOrNull { lowerText.contains(it.lowercase()) || lowerFileName.contains(it.lowercase()) }
+
+                val gameStatus = when {
+                    lowerText.contains("胜利") || lowerText.contains("victory") -> "对局胜利"
+                    lowerText.contains("失败") || lowerText.contains("defeat") -> "对局战报"
+                    lowerText.contains("mvp") -> "MVP战绩"
+                    lowerText.contains("排位") -> "排位赛"
+                    lowerText.contains("抽卡") || lowerText.contains("祈愿") -> "抽卡记录"
+                    lowerText.contains("深境螺旋") || lowerText.contains("深渊") -> "深渊通关"
+                    lowerText.contains("战绩") -> "游戏战绩"
+                    else -> null
+                }
+
+                if (gameName != null && gameStatus != null) {
+                    "$gameName · $gameStatus"
+                } else if (gameName != null) {
+                    "$gameName 截图"
+                } else if (gameStatus != null) {
+                    "游戏 · $gameStatus"
+                } else {
+                    val cleanLine = lines.firstOrNull {
+                        !it.contains(":") && !it.contains("%") && it.length in 3..30
+                    } ?: (if (fileName.isNotBlank()) fileName.substringBeforeLast(".") else "游戏截图")
+                    cleanLine
+                }
+            }
             lines.isNotEmpty() -> {
                 // Find a line that looks like a heading or subject (skip pure timestamps or battery bars)
                 val cleanLine = lines.firstOrNull {
@@ -174,6 +273,24 @@ object ScreenshotClassifier {
 
         // 4. Extract Summary or key highlights
         val summaryParts = mutableListOf<String>()
+
+        if (bestCategory == "game") {
+            val kdaPattern = Pattern.compile("(\\d{1,2})[/\\-](\\d{1,2})[/\\-](\\d{1,2})")
+            val kdaMatcher = kdaPattern.matcher(ocrText)
+            if (kdaMatcher.find()) {
+                summaryParts.add("战绩: ${kdaMatcher.group()}")
+                detectedTags.add("KDA")
+            }
+            if (lowerText.contains("mvp")) {
+                summaryParts.add("评定: MVP")
+                detectedTags.add("MVP")
+            }
+            val rankPattern = Pattern.compile("(王者|星耀|钻石|铂金|黄金|白银|青铜|宗师|无双|大师)[\\d一二三四五IVX]*")
+            val rankMatcher = rankPattern.matcher(ocrText)
+            if (rankMatcher.find()) {
+                summaryParts.add("段位: ${rankMatcher.group()}")
+            }
+        }
         val priceMatcher = PRICE_PATTERN.matcher(ocrText)
         if (priceMatcher.find()) {
             val price = priceMatcher.group().trim()

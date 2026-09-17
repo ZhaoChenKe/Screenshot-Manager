@@ -20,6 +20,8 @@ import com.example.data.preferences.UserPreferencesRepository
 import com.example.ocr.MlKitOcrService
 import com.example.ocr.OcrService
 import com.example.scanner.MediaStoreScanner
+import com.example.similarity.SimilarGroup
+import com.example.similarity.SimilarityDetector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -156,7 +158,7 @@ class ScreenshotRepository(
             val recognizedText = ocrService.recognizeText(context, uri)
 
             // Step 2: Rule-based local classification & tag extraction
-            val localResult = ScreenshotClassifier.classify(recognizedText, item.fileName)
+            val localResult = ScreenshotClassifier.classify(recognizedText, item.fileName, item.width, item.height)
 
             var finalTitle = localResult.title
             var finalCategory = localResult.categoryId
@@ -255,6 +257,11 @@ class ScreenshotRepository(
         screenshotDao.getPotentialDuplicates()
     }
 
+    suspend fun getSimilarAndDuplicateGroups(): List<SimilarGroup> = withContext(Dispatchers.IO) {
+        val allScreenshots = screenshotDao.getAllScreenshots()
+        SimilarityDetector.findSimilarGroups(allScreenshots)
+    }
+
     /**
      * Generates and loads realistic sample screenshots for immediate preview
      */
@@ -271,10 +278,27 @@ class ScreenshotRepository(
             val summary: String,
             val headerColor: Int,
             val appTitle: String,
-            val bodyLines: List<String>
+            val bodyLines: List<String>,
+            val customWidth: Int = 540,
+            val customHeight: Int = 960,
+            val timeOffsetMs: Long = 0L
         )
 
         val samples = listOf(
+            SampleData(
+                fileName = "Screenshot_HonorOfKings_Victory.jpg",
+                title = "王者荣耀·排位赛对局胜利",
+                categoryId = "game",
+                ocrText = "王者荣耀 胜利 VICTORY\n排位赛 · 荣耀王者 52星\n对局详情 比赛用时 18:32\nMVP 本局最佳：鲁班七号 (12/1/8)\n参团率 76% 伤害占比 38.5% 经济 13850\nKDA 20.0 评分 14.8\nS36赛季 赛季战绩结算",
+                tags = listOf("游戏", "王者荣耀", "排位", "MVP", "战绩", "KDA"),
+                summary = "排位赛荣耀王者52星对局胜利，MVP 鲁班七号 战绩 12/1/8，KDA 20.0 评分 14.8",
+                headerColor = Color.parseColor("#7C3AED"),
+                appTitle = "王者荣耀 · 对局战报",
+                bodyLines = listOf("排位赛 · 荣耀王者52星 (对局胜利)", "MVP: 鲁班七号 (战绩 12/1/8)", "评分: 14.8 · KDA: 20.0 · 参团率 76%", "输出占比: 38.5% · 经济: 13,850"),
+                customWidth = 960,
+                customHeight = 540,
+                timeOffsetMs = 0L
+            ),
             SampleData(
                 fileName = "Screenshot_Taobao_Keyboard_2026.jpg",
                 title = "淘宝·机械键盘订单",
@@ -284,7 +308,8 @@ class ScreenshotRepository(
                 summary = "Keychron 矮轴键盘订单已付款 399 元，顺丰单号 SF13928472910",
                 headerColor = Color.parseColor("#FF5000"),
                 appTitle = "淘宝 · 订单详情",
-                bodyLines = listOf("交易状态：买家已付款", "商品：Keychron K3 Pro 机械键盘", "实付款：￥399.00", "运单号：SF13928472910")
+                bodyLines = listOf("交易状态：买家已付款", "商品：Keychron K3 Pro 机械键盘", "实付款：￥399.00", "运单号：SF13928472910"),
+                timeOffsetMs = 3600000L
             ),
             SampleData(
                 fileName = "Screenshot_SF_Express_2026.jpg",
@@ -295,7 +320,20 @@ class ScreenshotRepository(
                 summary = "顺丰快件派送中，预计今日 14:30 投递至中关村丰巢快递柜",
                 headerColor = Color.parseColor("#222222"),
                 appTitle = "顺丰速运 · 运单追踪",
-                bodyLines = listOf("运单号：SF13928472910", "状态：派送中", "派件员：王师傅 13800138000", "送达点：海淀区中关村丰巢柜")
+                bodyLines = listOf("运单号：SF13928472910", "状态：派送中", "派件员：王师傅 13800138000", "送达点：海淀区中关村丰巢柜"),
+                timeOffsetMs = 7200000L
+            ),
+            SampleData(
+                fileName = "Screenshot_SF_Express_Duplicate.jpg",
+                title = "顺丰速运·派件通知(连拍重复项)",
+                categoryId = "express",
+                ocrText = "顺丰速运\n运单号：SF13928472910\n快件正在派送中\n派件员：王师傅 13800138000\n预计今日 14:30 送达中关村南大街丰巢快递柜",
+                tags = listOf("快递", "顺丰", "派送", "丰巢"),
+                summary = "顺丰快件派送中，预计今日 14:30 投递至中关村丰巢快递柜",
+                headerColor = Color.parseColor("#222222"),
+                appTitle = "顺丰速运 · 运单追踪",
+                bodyLines = listOf("运单号：SF13928472910", "状态：派送中", "派件员：王师傅 13800138000", "送达点：海淀区中关村丰巢柜"),
+                timeOffsetMs = 7205000L // 5 seconds apart: burst screenshot!
             ),
             SampleData(
                 fileName = "Screenshot_Meeting_Notes_2026.jpg",
@@ -306,7 +344,8 @@ class ScreenshotRepository(
                 summary = "Q4移动端产品规划会议，讨论离线OCR与Gemini结构化分析，下周三封版",
                 headerColor = Color.parseColor("#1B6AF4"),
                 appTitle = "飞书文档 · 会议纪要",
-                bodyLines = listOf("Q4移动端产品规划会议", "参会人：张伟、李莉、王强", "1. 离线OCR识别率达到98%", "2. 下周三完成封版上线")
+                bodyLines = listOf("Q4移动端产品规划会议", "参会人：张伟、李莉、王强", "1. 离线OCR识别率达到98%", "2. 下周三完成封版上线"),
+                timeOffsetMs = 10800000L
             ),
             SampleData(
                 fileName = "Screenshot_Flight_AirChina_2026.jpg",
@@ -317,7 +356,8 @@ class ScreenshotRepository(
                 summary = "09月20日国航 CA1831 航班，北京T3至上海虹桥T2，座位16A",
                 headerColor = Color.parseColor("#C8102E"),
                 appTitle = "航旅纵横 · 行程详情",
-                bodyLines = listOf("航班：中国国际航空 CA1831", "行程：北京首都 T3 - 上海虹桥 T2", "时间：09月20日 08:30", "座位：16A (靠窗) · 登机口 C28")
+                bodyLines = listOf("航班：中国国际航空 CA1831", "行程：北京首都 T3 - 上海虹桥 T2", "时间：09月20日 08:30", "座位：16A (靠窗) · 登机口 C28"),
+                timeOffsetMs = 14400000L
             ),
             SampleData(
                 fileName = "Screenshot_Android_Kotlin_2026.jpg",
@@ -328,14 +368,15 @@ class ScreenshotRepository(
                 summary = "Kotlin 协程 StateFlow 原理笔记，初始值与防抖特性在 Compose 中的实战用法",
                 headerColor = Color.parseColor("#7F52FF"),
                 appTitle = "技术笔记 · Android 开发",
-                bodyLines = listOf("Kotlin 协程 StateFlow 实战", "1. 具初始值的状态热流", "2. Compose UI 状态响应", "3. 结合 collectAsStateWithLifecycle")
+                bodyLines = listOf("Kotlin 协程 StateFlow 实战", "1. 具初始值的状态热流", "2. Compose UI 状态响应", "3. 结合 collectAsStateWithLifecycle"),
+                timeOffsetMs = 18000000L
             )
         )
 
         for ((index, sample) in samples.withIndex()) {
             val file = File(sampleDir, sample.fileName)
-            val width = 540
-            val height = 960
+            val width = sample.customWidth
+            val height = sample.customHeight
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
 
@@ -402,7 +443,8 @@ class ScreenshotRepository(
             }
 
             val fileUri = Uri.fromFile(file).toString()
-            val now = System.currentTimeMillis() - (index * 3600000L)
+            val now = System.currentTimeMillis() - sample.timeOffsetMs
+            val hashSig = "${width}x${height}_${file.length()}"
             val entity = ScreenshotEntity(
                 uri = fileUri,
                 fileName = sample.fileName,
@@ -415,6 +457,7 @@ class ScreenshotRepository(
                 width = width,
                 height = height,
                 fileSize = file.length(),
+                hash = hashSig,
                 isProcessed = true
             )
             val id = screenshotDao.insertScreenshot(entity)

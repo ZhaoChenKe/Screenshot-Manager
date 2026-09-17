@@ -17,6 +17,9 @@ interface ScreenshotDao {
     @Query("SELECT * FROM screenshots ORDER BY createTime DESC")
     fun getAllScreenshotsFlow(): Flow<List<ScreenshotWithDetails>>
 
+    @Query("SELECT * FROM screenshots ORDER BY createTime DESC")
+    suspend fun getAllScreenshots(): List<ScreenshotEntity>
+
     @Transaction
     @Query("SELECT * FROM screenshots ORDER BY createTime DESC LIMIT :limit")
     fun getRecentScreenshotsFlow(limit: Int = 30): Flow<List<ScreenshotWithDetails>>

@@ -10,6 +10,7 @@ import com.example.data.model.ScreenshotEntity
 import com.example.data.model.ScreenshotWithDetails
 import com.example.data.preferences.UserPreferences
 import com.example.data.repository.ProcessingProgress
+import com.example.similarity.SimilarGroup
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -80,6 +81,12 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _duplicateGroups = MutableStateFlow<List<List<ScreenshotEntity>>>(emptyList())
     val duplicateGroups: StateFlow<List<List<ScreenshotEntity>>> = _duplicateGroups.asStateFlow()
+
+    private val _similarGroups = MutableStateFlow<List<SimilarGroup>>(emptyList())
+    val similarGroups: StateFlow<List<SimilarGroup>> = _similarGroups.asStateFlow()
+
+    private val _isCheckingDuplicates = MutableStateFlow(false)
+    val isCheckingDuplicates: StateFlow<Boolean> = _isCheckingDuplicates.asStateFlow()
 
     init {
         // Automatically check duplicates in background
@@ -154,11 +161,34 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun batchUpdateCategory(ids: List<Long>, categoryId: String, onCompleted: (() -> Unit)? = null) {
+        viewModelScope.launch {
+            for (id in ids) {
+                repository.updateCategory(id, categoryId)
+            }
+            onCompleted?.invoke()
+        }
+    }
+
     fun checkDuplicates() {
         viewModelScope.launch {
-            val potential = repository.getPotentialDuplicates()
-            val groups = potential.groupBy { it.hash }.values.filter { it.size > 1 }.toList()
-            _duplicateGroups.value = groups
+            _isCheckingDuplicates.value = true
+            try {
+                // 1. Perceptual and content similarity analysis
+                val similarResult = repository.getSimilarAndDuplicateGroups()
+                _similarGroups.value = similarResult
+
+                // 2. Legacy fallback grouping
+                val legacy = similarResult.map { it.items }
+                _duplicateGroups.value = legacy
+            } catch (e: Exception) {
+                // Fallback
+                val potential = repository.getPotentialDuplicates()
+                val groups = potential.groupBy { it.hash }.values.filter { it.size > 1 }.toList()
+                _duplicateGroups.value = groups
+            } finally {
+                _isCheckingDuplicates.value = false
+            }
         }
     }
 

@@ -40,7 +40,18 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -94,8 +105,12 @@ fun HomeScreen(
     val progress by viewModel.processingProgress.collectAsStateWithLifecycle()
     val categoriesWithCount by viewModel.categoriesWithCount.collectAsStateWithLifecycle()
     val duplicateGroups by viewModel.duplicateGroups.collectAsStateWithLifecycle()
+    val similarGroups by viewModel.similarGroups.collectAsStateWithLifecycle()
 
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
+    var isBatchMode by remember { mutableStateOf(false) }
+    var selectedBatchIds by remember { mutableStateOf(setOf<Long>()) }
+    var showBatchDeleteDialog by remember { mutableStateOf(false) }
 
     val filteredScreenshots = remember(recentScreenshots, selectedCategoryId) {
         if (selectedCategoryId == null) {
@@ -147,88 +162,181 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(9.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .border(
-                                    width = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                    shape = RoundedCornerShape(9.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_app_brand_logo_tintable),
-                                contentDescription = "Logo",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(20.dp)
+            if (isBatchMode) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "已选择 ${selectedBatchIds.size} 项",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            isBatchMode = false
+                            selectedBatchIds = emptySet()
+                        }) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = "退出批量管理")
+                        }
+                    },
+                    actions = {
+                        val allFilteredIds = filteredScreenshots.map { it.screenshot.id }.toSet()
+                        TextButton(onClick = {
+                            selectedBatchIds = if (selectedBatchIds.size == allFilteredIds.size && allFilteredIds.isNotEmpty()) {
+                                emptySet()
+                            } else {
+                                allFilteredIds
+                            }
+                        }) {
+                            Text(
+                                text = if (selectedBatchIds.size == allFilteredIds.size && allFilteredIds.isNotEmpty()) "清空" else "全选",
+                                fontWeight = FontWeight.Bold
                             )
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "截图管家",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+            } else {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                        shape = RoundedCornerShape(9.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_app_brand_logo_tintable),
+                                    contentDescription = "Logo",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant
-                                ) {
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "离线OCR",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.5.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                        text = "截图管家",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold
                                     )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Text(
+                                            text = "离线OCR",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 0.5.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { viewModel.loadSampleScreenshots() },
-                        modifier = Modifier.testTag("home_load_samples_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = "导入演示示例截图",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    IconButton(
-                        onClick = { viewModel.startScan() },
-                        modifier = Modifier.testTag("home_refresh_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "扫描相册截图"
-                        )
-                    }
-                    IconButton(
-                        onClick = onNavigateToSettings,
-                        modifier = Modifier.testTag("home_settings_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "设置"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { viewModel.loadSampleScreenshots() },
+                            modifier = Modifier.testTag("home_load_samples_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = "导入演示示例截图",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        IconButton(
+                            onClick = { viewModel.startScan() },
+                            modifier = Modifier.testTag("home_refresh_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "扫描相册截图"
+                            )
+                        }
+                        IconButton(
+                            onClick = onNavigateToSettings,
+                            modifier = Modifier.testTag("home_settings_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "设置"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
                 )
-            )
+            }
+        },
+        bottomBar = {
+            AnimatedVisibility(
+                visible = isBatchMode && selectedBatchIds.isNotEmpty(),
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it })
+            ) {
+                Surface(
+                    tonalElevation = 8.dp,
+                    shadowElevation = 12.dp,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "已选 ${selectedBatchIds.size} 张截图",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    isBatchMode = false
+                                    selectedBatchIds = emptySet()
+                                }
+                            ) {
+                                Text("完成")
+                            }
+
+                            Button(
+                                onClick = { showBatchDeleteDialog = true },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("批量删除")
+                            }
+                        }
+                    }
+                }
+            }
         }
     ) { innerPadding ->
         LazyVerticalGrid(
@@ -372,17 +480,16 @@ fun HomeScreen(
                         onClick = { viewModel.startProcessPending() },
                         modifier = Modifier.weight(1f)
                     )
-                    if (duplicateGroups.isNotEmpty()) {
-                        StatCard(
-                            title = "疑似重复",
-                            count = duplicateGroups.size,
-                            icon = Icons.Default.CleaningServices,
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                            onClick = onNavigateToDuplicates,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    val dupCount = if (similarGroups.isNotEmpty()) similarGroups.size else duplicateGroups.size
+                    StatCard(
+                        title = "重复/相似",
+                        count = dupCount,
+                        icon = Icons.Default.CleaningServices,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = if (dupCount > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
+                        onClick = onNavigateToDuplicates,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
 
@@ -570,27 +677,64 @@ fun HomeScreen(
                         )
                     }
 
-                    if (selectedCategoryId != null) {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { selectedCategoryId = null }
-                                .padding(horizontal = 6.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Close,
-                                contentDescription = "清除筛选",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                text = "清除筛选",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (selectedCategoryId != null) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { selectedCategoryId = null }
+                                    .padding(horizontal = 6.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "清除筛选",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "清除筛选",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        if (filteredScreenshots.isNotEmpty()) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isBatchMode) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        isBatchMode = !isBatchMode
+                                        if (!isBatchMode) selectedBatchIds = emptySet()
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Checklist,
+                                        contentDescription = null,
+                                        tint = if (isBatchMode) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (isBatchMode) "完成" else "批量管理",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (isBatchMode) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -628,10 +772,45 @@ fun HomeScreen(
                 items(filteredScreenshots, key = { it.screenshot.id }) { item ->
                     ScreenshotCard(
                         item = item,
-                        onClick = { onNavigateToDetail(item.screenshot.id) }
+                        onClick = { onNavigateToDetail(item.screenshot.id) },
+                        isSelectionMode = isBatchMode,
+                        isSelected = item.screenshot.id in selectedBatchIds,
+                        onToggleSelect = {
+                            val id = item.screenshot.id
+                            selectedBatchIds = if (id in selectedBatchIds) selectedBatchIds - id else selectedBatchIds + id
+                        }
                     )
                 }
             }
         }
+    }
+
+    if (showBatchDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showBatchDeleteDialog = false },
+            title = { Text("确认批量删除", fontWeight = FontWeight.Bold) },
+            text = { Text("确定要删除选中的 ${selectedBatchIds.size} 张截图吗？删除后不可恢复。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val idsToDelete = selectedBatchIds.toList()
+                        showBatchDeleteDialog = false
+                        viewModel.deleteScreenshots(idsToDelete) {
+                            selectedBatchIds = emptySet()
+                            isBatchMode = false
+                            Toast.makeText(context, "已成功删除 ${idsToDelete.size} 张截图", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("删除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatchDeleteDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
