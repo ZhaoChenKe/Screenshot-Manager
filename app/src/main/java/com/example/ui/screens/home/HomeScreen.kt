@@ -3,6 +3,7 @@ package com.example.ui.screens.home
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -82,6 +83,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.ui.components.DeleteConfirmDialog
 import com.example.ui.components.EmptyStateView
 import com.example.ui.components.ProgressBarCard
 import com.example.ui.components.ScreenshotCard
@@ -791,31 +793,23 @@ fun HomeScreen(
     }
 
     if (showBatchDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showBatchDeleteDialog = false },
-            title = { Text("确认批量删除", fontWeight = FontWeight.Bold) },
-            text = { Text("确定要删除选中的 ${selectedBatchIds.size} 张截图吗？删除后不可恢复。") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val idsToDelete = selectedBatchIds.toList()
-                        showBatchDeleteDialog = false
-                        viewModel.deleteScreenshots(idsToDelete) {
-                            selectedBatchIds = emptySet()
-                            isBatchMode = false
-                            Toast.makeText(context, "已成功删除 ${idsToDelete.size} 张截图", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("删除")
+        val totalBytes = recentScreenshots.filter { it.screenshot.id in selectedBatchIds }.sumOf { it.screenshot.fileSize }
+        val formattedSize = Formatter.formatFileSize(context, totalBytes)
+        DeleteConfirmDialog(
+            title = "确认批量删除 ${selectedBatchIds.size} 张截图？",
+            message = "所选截图将从设备相册中彻底移除并释放存储空间。此操作无法撤销。",
+            freedSpaceText = formattedSize,
+            confirmButtonText = "确认删除 (${selectedBatchIds.size}张)",
+            onConfirm = {
+                val idsToDelete = selectedBatchIds.toList()
+                showBatchDeleteDialog = false
+                viewModel.deleteScreenshots(idsToDelete) {
+                    selectedBatchIds = emptySet()
+                    isBatchMode = false
+                    Toast.makeText(context, "已成功删除 ${idsToDelete.size} 张截图，释放空间 $formattedSize", Toast.LENGTH_SHORT).show()
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showBatchDeleteDialog = false }) {
-                    Text("取消")
-                }
-            }
+            onDismiss = { showBatchDeleteDialog = false }
         )
     }
 

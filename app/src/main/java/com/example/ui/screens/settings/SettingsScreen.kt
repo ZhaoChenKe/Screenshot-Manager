@@ -508,9 +508,9 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "自建分发服务源 (可选)", fontWeight = FontWeight.SemiBold)
+                            Text(text = "版本更新服务源", fontWeight = FontWeight.SemiBold)
                             Text(
-                                text = if (prefs.customUpdateUrl.isBlank()) "未配置（使用内置演示通道，可填入自定义 version.json 地址）" else prefs.customUpdateUrl,
+                                text = if (prefs.customUpdateUrl.isBlank()) "官方源：GitHub Releases (ZhaoChenKe/Screenshot-Manager)" else prefs.customUpdateUrl,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1
@@ -661,11 +661,11 @@ fun SettingsScreen(
     if (showCustomUrlDialog) {
         AlertDialog(
             onDismissRequest = { showCustomUrlDialog = false },
-            title = { Text("自建分发服务源") },
+            title = { Text("配置版本更新服务源") },
             text = {
                 Column {
                     Text(
-                        text = "您可以在您的服务器或 GitHub Raw 部署 version.json，填写对应的 HTTP/HTTPS 地址。应用将直连下载 APK 并调起手机系统安装器。",
+                        text = "默认通过官方 GitHub 仓库 (ZhaoChenKe/Screenshot-Manager) Releases 检测最新版本。支持配置国内加速镜像代理 (如 ghproxy) 或自建服务器 version.json 链接。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -673,7 +673,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = customUrlInput,
                         onValueChange = { customUrlInput = it },
-                        placeholder = { Text("https://your-domain.com/version.json") },
+                        placeholder = { Text("https://api.github.com/repos/ZhaoChenKe/Screenshot-Manager/releases/latest") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )

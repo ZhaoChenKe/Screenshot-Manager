@@ -24,7 +24,10 @@ class AppUpdateManager(private val context: Context) {
     companion object {
         private const val TAG = "AppUpdateManager"
         const val DEFAULT_CHECK_INTERVAL_DAYS = 7 // 默认一周检查一次
-        const val DEMO_UPDATE_URL = "https://example.com/screenshot-manager/version.json"
+        const val GITHUB_OWNER = "ZhaoChenKe"
+        const val GITHUB_REPO = "Screenshot-Manager"
+        const val DEFAULT_UPDATE_URL = "https://api.github.com/repos/ZhaoChenKe/Screenshot-Manager/releases/latest"
+        const val DEMO_UPDATE_URL = DEFAULT_UPDATE_URL
     }
 
     /**
@@ -63,7 +66,7 @@ class AppUpdateManager(private val context: Context) {
 
     /**
      * 检查版本更新
-     * @param customUrl 用户在设置中自定义的 version.json 地址
+     * @param customUrl 用户在设置中自定义的更新接口地址，默认为官方 GitHub 仓库 Releases 接口
      * @param simulateIfNoUrl 当没有配置服务器或网络不可达时，是否允许进入演示升级模式
      */
     suspend fun checkForUpdate(
@@ -72,23 +75,15 @@ class AppUpdateManager(private val context: Context) {
     ): UpdateCheckResult = withContext(Dispatchers.IO) {
         val (currentVersionName, currentVersionCode) = getCurrentVersionInfo()
 
-        val urlStr = customUrl?.trim()
-        if (urlStr.isNullOrBlank()) {
-            if (simulateIfNoUrl) {
-                // 生成模拟演示新版本信息，方便用户直接体验
-                return@withContext UpdateCheckResult.HasUpdate(getSimulatedUpdateInfo(currentVersionCode + 1))
-            } else {
-                return@withContext UpdateCheckResult.UpToDate(currentVersionName, currentVersionCode)
-            }
-        }
+        val urlStr = if (customUrl.isNullOrBlank()) DEFAULT_UPDATE_URL else customUrl.trim()
 
         try {
             val url = URL(urlStr)
             val connection = (url.openConnection() as HttpURLConnection).apply {
-                connectTimeout = 8000
-                readTimeout = 8000
+                connectTimeout = 10000
+                readTimeout = 12000
                 requestMethod = "GET"
-                setRequestProperty("Accept", "application/json")
+                setRequestProperty("Accept", "application/vnd.github.v3+json, application/json")
                 setRequestProperty("User-Agent", "ScreenshotManager/${currentVersionName}")
             }
 
@@ -97,16 +92,19 @@ class AppUpdateManager(private val context: Context) {
                 val jsonStr = connection.inputStream.bufferedReader().use { it.readText() }
                 val json = JSONObject(jsonStr)
 
-                val remoteVersionCode = json.optInt("versionCode", 1)
-                val remoteVersionName = json.optString("versionName", "1.0.1")
-                val changelog = json.optString("changelog", "1. 稳定性优化与问题修复")
-                val downloadUrl = json.optString("downloadUrl", "")
-                val fileSizeMb = json.optDouble("fileSizeMb", 15.0)
-                val isForceUpdate = json.optBoolean("isForceUpdate", false)
-                val publishDate = json.optString("publishDate", "")
-
-                if (remoteVersionCode > currentVersionCode) {
-                    val updateInfo = UpdateInfo(
+                val updateInfo: UpdateInfo? = if (json.has("tag_name")) {
+                    // GitHub Releases API Format
+                    parseGitHubReleaseJson(json, currentVersionCode)
+                } else if (json.has("versionCode") || json.has("versionName")) {
+                    // Standard Custom version.json Format
+                    val remoteVersionCode = json.optInt("versionCode", 1)
+                    val remoteVersionName = json.optString("versionName", "1.0.1")
+                    val changelog = json.optString("changelog", "1. 稳定性优化与问题修复")
+                    val downloadUrl = json.optString("downloadUrl", "")
+                    val fileSizeMb = json.optDouble("fileSizeMb", 15.0)
+                    val isForceUpdate = json.optBoolean("isForceUpdate", false)
+                    val publishDate = json.optString("publishDate", "")
+                    UpdateInfo(
                         versionCode = remoteVersionCode,
                         versionName = remoteVersionName,
                         changelog = changelog,
@@ -115,7 +113,19 @@ class AppUpdateManager(private val context: Context) {
                         isForceUpdate = isForceUpdate,
                         publishDate = publishDate
                     )
+                } else {
+                    null
+                }
+
+                if (updateInfo != null && isNewerVersion(updateInfo.versionName, currentVersionName, updateInfo.versionCode, currentVersionCode)) {
                     UpdateCheckResult.HasUpdate(updateInfo)
+                } else {
+                    UpdateCheckResult.UpToDate(currentVersionName, currentVersionCode)
+                }
+            } else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                // 404 表示 GitHub 仓库尚未发布任何 Release，当前即为最新
+                if (simulateIfNoUrl) {
+                    UpdateCheckResult.HasUpdate(getSimulatedUpdateInfo(currentVersionCode + 1))
                 } else {
                     UpdateCheckResult.UpToDate(currentVersionName, currentVersionCode)
                 }
@@ -123,7 +133,7 @@ class AppUpdateManager(private val context: Context) {
                 if (simulateIfNoUrl) {
                     UpdateCheckResult.HasUpdate(getSimulatedUpdateInfo(currentVersionCode + 1))
                 } else {
-                    UpdateCheckResult.Error("服务器响应异常 (HTTP $responseCode)")
+                    UpdateCheckResult.Error("检查失败 (HTTP $responseCode)")
                 }
             }
         } catch (e: Exception) {
@@ -133,6 +143,95 @@ class AppUpdateManager(private val context: Context) {
             } else {
                 UpdateCheckResult.Error("无法连接到更新服务器: ${e.localizedMessage ?: "网络错误"}")
             }
+        }
+    }
+
+    /**
+     * 解析 GitHub Releases 最新发布数据
+     */
+    private fun parseGitHubReleaseJson(json: JSONObject, currentVersionCode: Int): UpdateInfo {
+        val rawTag = json.optString("tag_name", "v1.0.0")
+        val cleanVersionName = rawTag.removePrefix("v").removePrefix("V")
+        val releaseName = json.optString("name", "新版本 $rawTag")
+        val body = json.optString("body", "优化系统体验与多项问题修复")
+        val publishedAt = json.optString("published_at", "").take(10)
+
+        var downloadUrl = ""
+        var fileSizeMb = 18.0
+
+        val assets = json.optJSONArray("assets")
+        if (assets != null && assets.length() > 0) {
+            for (i in 0 until assets.length()) {
+                val asset = assets.getJSONObject(i)
+                val assetName = asset.optString("name", "")
+                if (assetName.endsWith(".apk", ignoreCase = true)) {
+                    downloadUrl = asset.optString("browser_download_url", "")
+                    val sizeBytes = asset.optLong("size", 0L)
+                    if (sizeBytes > 0) {
+                        fileSizeMb = Math.round((sizeBytes / (1024.0 * 1024.0)) * 10.0) / 10.0
+                    }
+                    break
+                }
+            }
+        }
+
+        if (downloadUrl.isBlank()) {
+            downloadUrl = json.optString("html_url", "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases")
+        }
+
+        val remoteVersionCode = parseSemanticVersionToCode(cleanVersionName, currentVersionCode + 1)
+
+        val fullChangelog = if (body.isNotBlank()) {
+            if (releaseName.isNotBlank() && !body.contains(releaseName)) {
+                "$releaseName\n\n$body"
+            } else {
+                body
+            }
+        } else {
+            "修复已知问题并提升稳定性"
+        }
+
+        return UpdateInfo(
+            versionCode = remoteVersionCode,
+            versionName = cleanVersionName,
+            changelog = fullChangelog,
+            downloadUrl = downloadUrl,
+            fileSizeMb = fileSizeMb,
+            isForceUpdate = false,
+            publishDate = publishedAt
+        )
+    }
+
+    /**
+     * 判断远程版本是否高于本地版本（支持语义化版本对比，如 1.0.1 > 1.0.0）
+     */
+    private fun isNewerVersion(remoteTag: String, currentVerName: String, remoteCode: Int, currentCode: Int): Boolean {
+        if (remoteCode > currentCode && remoteCode > 0 && currentCode > 0) return true
+        val rParts = remoteTag.removePrefix("v").removePrefix("V").split(".").mapNotNull { it.toIntOrNull() }
+        val cParts = currentVerName.removePrefix("v").removePrefix("V").split(".").mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(rParts.size, cParts.size)
+        for (i in 0 until maxLen) {
+            val r = rParts.getOrElse(i) { 0 }
+            val c = cParts.getOrElse(i) { 0 }
+            if (r > c) return true
+            if (r < c) return false
+        }
+        return false
+    }
+
+    private fun parseSemanticVersionToCode(versionName: String, fallback: Int): Int {
+        return try {
+            val parts = versionName.split(".").mapNotNull { it.toIntOrNull() }
+            if (parts.isNotEmpty()) {
+                val major = parts.getOrElse(0) { 1 }
+                val minor = parts.getOrElse(1) { 0 }
+                val patch = parts.getOrElse(2) { 0 }
+                major * 10000 + minor * 100 + patch
+            } else {
+                fallback
+            }
+        } catch (e: Exception) {
+            fallback
         }
     }
 
@@ -173,12 +272,7 @@ class AppUpdateManager(private val context: Context) {
             if (downloadUrl.startsWith("http://") || downloadUrl.startsWith("https://")) {
                 var isRealDownloadSuccess = false
                 try {
-                    val url = URL(downloadUrl)
-                    val connection = (url.openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 10000
-                        readTimeout = 15000
-                        requestMethod = "GET"
-                    }
+                    val connection = openConnectionWithRedirects(downloadUrl)
 
                     if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                         val totalBytes = connection.contentLength.toLong().let { if (it <= 0) (updateInfo.fileSizeMb * 1024 * 1024).toLong() else it }
@@ -302,5 +396,39 @@ class AppUpdateManager(private val context: Context) {
             Log.e(TAG, "Trigger install failed", e)
             Toast.makeText(context, "调起安装程序失败: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun openConnectionWithRedirects(urlStr: String, maxRedirects: Int = 5): HttpURLConnection {
+        var currentUrl = urlStr
+        for (i in 0 until maxRedirects) {
+            val url = URL(currentUrl)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.instanceFollowRedirects = false
+            conn.connectTimeout = 12000
+            conn.readTimeout = 20000
+            conn.setRequestProperty("User-Agent", "ScreenshotManager")
+            val code = conn.responseCode
+            if (code == HttpURLConnection.HTTP_MOVED_PERM ||
+                code == HttpURLConnection.HTTP_MOVED_TEMP ||
+                code == HttpURLConnection.HTTP_SEE_OTHER ||
+                code == 307 || code == 308
+            ) {
+                val location = conn.getHeaderField("Location") ?: break
+                conn.disconnect()
+                currentUrl = if (location.startsWith("http://") || location.startsWith("https://")) {
+                    location
+                } else {
+                    URL(url, location).toString()
+                }
+            } else {
+                return conn
+            }
+        }
+        val finalUrl = URL(currentUrl)
+        val finalConn = finalUrl.openConnection() as HttpURLConnection
+        finalConn.connectTimeout = 12000
+        finalConn.readTimeout = 20000
+        finalConn.setRequestProperty("User-Agent", "ScreenshotManager")
+        return finalConn
     }
 }

@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.text.format.Formatter
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -83,6 +84,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.db.AppDatabase
 import com.example.data.model.ScreenshotWithDetails
+import com.example.ui.components.DeleteConfirmDialog
 import com.example.ui.viewmodel.ScreenshotViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -468,27 +470,20 @@ fun ScreenshotDetailScreen(
 
     // Delete Confirmation Dialog
     if (showDeleteConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("确认删除") },
-            text = { Text("确定要从截图管家中移除此截图记录吗？(相册原图不会被修改)") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirmDialog = false
-                        viewModel.deleteScreenshot(screenshotId) {
-                            onNavigateBack()
-                        }
-                    }
-                ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+        val sizeText = itemWithDetails?.screenshot?.fileSize?.let { Formatter.formatFileSize(context, it) }
+        DeleteConfirmDialog(
+            title = "确认删除此截图？",
+            message = "截图文件将从手机相册与截图管家中彻底删除，无法恢复。",
+            freedSpaceText = sizeText,
+            confirmButtonText = "确认彻底删除",
+            onConfirm = {
+                showDeleteConfirmDialog = false
+                viewModel.deleteScreenshot(screenshotId) {
+                    Toast.makeText(context, "已删除截图", Toast.LENGTH_SHORT).show()
+                    onNavigateBack()
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text("取消")
-                }
-            }
+            onDismiss = { showDeleteConfirmDialog = false }
         )
     }
 

@@ -161,10 +161,36 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    suspend fun executeCheckDuplicates() {
+        _isCheckingDuplicates.value = true
+        try {
+            // 1. Perceptual and content similarity analysis
+            val similarResult = repository.getSimilarAndDuplicateGroups()
+            _similarGroups.value = similarResult
+
+            // 2. Legacy fallback grouping
+            val legacy = similarResult.map { it.items }
+            _duplicateGroups.value = legacy
+        } catch (e: Exception) {
+            // Fallback
+            val potential = repository.getPotentialDuplicates()
+            val groups = potential.groupBy { it.hash }.values.filter { it.size > 1 }.toList()
+            _duplicateGroups.value = groups
+        } finally {
+            _isCheckingDuplicates.value = false
+        }
+    }
+
+    fun checkDuplicates() {
+        viewModelScope.launch {
+            executeCheckDuplicates()
+        }
+    }
+
     fun deleteScreenshot(screenshotId: Long, onDeleted: (() -> Unit)? = null) {
         viewModelScope.launch {
             repository.deleteScreenshot(screenshotId)
-            checkDuplicates()
+            executeCheckDuplicates()
             onDeleted?.invoke()
         }
     }
@@ -172,7 +198,7 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
     fun deleteScreenshots(ids: List<Long>, onDeleted: (() -> Unit)? = null) {
         viewModelScope.launch {
             repository.deleteScreenshots(ids)
-            checkDuplicates()
+            executeCheckDuplicates()
             onDeleted?.invoke()
         }
     }
@@ -189,28 +215,6 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
                 repository.updateCategory(id, categoryId)
             }
             onCompleted?.invoke()
-        }
-    }
-
-    fun checkDuplicates() {
-        viewModelScope.launch {
-            _isCheckingDuplicates.value = true
-            try {
-                // 1. Perceptual and content similarity analysis
-                val similarResult = repository.getSimilarAndDuplicateGroups()
-                _similarGroups.value = similarResult
-
-                // 2. Legacy fallback grouping
-                val legacy = similarResult.map { it.items }
-                _duplicateGroups.value = legacy
-            } catch (e: Exception) {
-                // Fallback
-                val potential = repository.getPotentialDuplicates()
-                val groups = potential.groupBy { it.hash }.values.filter { it.size > 1 }.toList()
-                _duplicateGroups.value = groups
-            } finally {
-                _isCheckingDuplicates.value = false
-            }
         }
     }
 

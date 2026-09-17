@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -75,6 +76,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.similarity.SimilarGroup
 import com.example.similarity.SimilarityCategory
+import com.example.ui.components.DeleteConfirmDialog
 import com.example.ui.components.EmptyStateView
 import com.example.ui.viewmodel.ScreenshotViewModel
 import java.text.SimpleDateFormat
@@ -284,58 +286,102 @@ fun DuplicatesScreen(
 
                         // Smart Select & Quick Actions Bar
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Row(
+                                    modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = "智能清理助手",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "智能清理助手",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = if (allRedundantIds.isNotEmpty()) "每组已标记 1 张最佳保留，发现 ${allRedundantIds.size} 张建议清理" else "每组已保留最佳图片，未发现多余副本",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
 
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    TextButton(
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // 1. Smart Select
+                                    OutlinedButton(
                                         onClick = {
-                                            // Select all redundant copies (leaving recommended keep item per group)
                                             selectedIds = allRedundantIds
-                                            Toast.makeText(context, "已为您智能勾选每组建议清理项", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "已智能勾选 ${allRedundantIds.size} 张多余截图", Toast.LENGTH_SHORT).show()
                                         },
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                        enabled = allRedundantIds.isNotEmpty(),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
                                     ) {
-                                        Text("智能推荐勾选", fontSize = 13.sp)
+                                        Text("智能勾选 (${allRedundantIds.size})", fontSize = 12.sp)
                                     }
 
+                                    // 2. Direct One-Click Clean Redundant
+                                    Button(
+                                        onClick = {
+                                            selectedIds = allRedundantIds
+                                            showDeleteConfirmDialog = true
+                                        },
+                                        enabled = allRedundantIds.isNotEmpty(),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError
+                                        ),
+                                        modifier = Modifier.weight(1.2f),
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(15.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("智能清理多余", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    // 3. Toggle all
+                                    val allIds = filteredGroups.flatMap { it.items }.map { it.id }.toSet()
                                     TextButton(
                                         onClick = {
-                                            val allIds = filteredGroups.flatMap { it.items }.map { it.id }.toSet()
                                             selectedIds = if (selectedIds.size == allIds.size) emptySet() else allIds
                                         },
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
                                     ) {
-                                        val allIds = filteredGroups.flatMap { it.items }.map { it.id }.toSet()
                                         Text(
                                             if (selectedIds.size == allIds.size && allIds.isNotEmpty()) "清空" else "全选",
-                                            fontSize = 13.sp
+                                            fontSize = 12.sp
                                         )
                                     }
                                 }
@@ -367,32 +413,20 @@ fun DuplicatesScreen(
 
     if (showDeleteConfirmDialog) {
         val formattedSize = Formatter.formatFileSize(context, selectedTotalBytes)
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("确认批量删除", fontWeight = FontWeight.Bold) },
-            text = {
-                Text("确定要删除选中的 ${selectedIds.size} 张截图吗？将释放约 $formattedSize 存储空间。删除后无法恢复。")
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val idsToDelete = selectedIds.toList()
-                        showDeleteConfirmDialog = false
-                        viewModel.deleteScreenshots(idsToDelete) {
-                            selectedIds = emptySet()
-                            Toast.makeText(context, "已成功批量删除 ${idsToDelete.size} 张截图", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("确认删除")
+        DeleteConfirmDialog(
+            title = "确认删除选中的 ${selectedIds.size} 张截图？",
+            message = "选中的重复或相似截图将被彻底删除并释放设备存储空间。此操作无法撤销。",
+            freedSpaceText = formattedSize,
+            confirmButtonText = "确认删除 (${selectedIds.size}张)",
+            onConfirm = {
+                val idsToDelete = selectedIds.toList()
+                showDeleteConfirmDialog = false
+                viewModel.deleteScreenshots(idsToDelete) {
+                    selectedIds = emptySet()
+                    Toast.makeText(context, "已成功清理 ${idsToDelete.size} 张截图，释放空间 $formattedSize", Toast.LENGTH_SHORT).show()
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text("取消")
-                }
-            }
+            onDismiss = { showDeleteConfirmDialog = false }
         )
     }
 }

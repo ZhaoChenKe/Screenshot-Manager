@@ -242,15 +242,40 @@ class ScreenshotRepository(
     }
 
     suspend fun deleteScreenshot(screenshotId: Long) = withContext(Dispatchers.IO) {
+        val entity = screenshotDao.getScreenshotById(screenshotId)
         tagDao.deleteAllCrossRefsForScreenshot(screenshotId)
         screenshotDao.deleteScreenshotById(screenshotId)
+        entity?.let { deletePhysicalFile(it.uri) }
     }
 
     suspend fun deleteScreenshots(ids: List<Long>) = withContext(Dispatchers.IO) {
+        val entities = ids.mapNotNull { screenshotDao.getScreenshotById(it) }
         for (id in ids) {
             tagDao.deleteAllCrossRefsForScreenshot(id)
         }
         screenshotDao.deleteScreenshotsByIds(ids)
+        for (entity in entities) {
+            deletePhysicalFile(entity.uri)
+        }
+    }
+
+    private fun deletePhysicalFile(uriStr: String) {
+        try {
+            if (uriStr.startsWith("file://")) {
+                val path = Uri.parse(uriStr).path
+                if (path != null) {
+                    val file = File(path)
+                    if (file.exists()) file.delete()
+                }
+            } else if (uriStr.startsWith("content://")) {
+                context.contentResolver.delete(Uri.parse(uriStr), null, null)
+            } else {
+                val file = File(uriStr)
+                if (file.exists()) file.delete()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to delete physical file for $uriStr: ${e.message}")
+        }
     }
 
     suspend fun getPotentialDuplicates(): List<ScreenshotEntity> = withContext(Dispatchers.IO) {
