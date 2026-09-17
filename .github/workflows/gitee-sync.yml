@@ -1,0 +1,138 @@
+name: Sync to Gitee & Release APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags:
+      - 'v*'
+      - 'V*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: '发布到 Gitee 的版本 Tag (例如 v1.0.7)'
+        required: false
+        default: 'v1.0.7'
+
+jobs:
+  # 任务一：同步代码与分支/标签到 Gitee
+  sync-repo:
+    name: Sync Repository to Gitee
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitHub Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror to Gitee
+        if: env.GITEE_TOKEN != ''
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USER: ${{ secrets.GITEE_USER || 'ZhaoChenKe' }}
+          GITEE_REPO: ${{ secrets.GITEE_REPO || 'Screenshot-Manager' }}
+        run: |
+          echo "Syncing code to Gitee repository: ${GITEE_USER}/${GITEE_REPO}..."
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add gitee "https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git"
+          # 推送当前分支
+          git push -u gitee HEAD || git push -u gitee HEAD --force
+          # 同步所有 tags
+          git push gitee --tags --force || true
+
+  # 任务二：编译构建 Android APK 并自动上传到 Gitee Release
+  build-and-release-gitee:
+    name: Build & Upload APK to Gitee Release
+    runs-on: ubuntu-latest
+    needs: [sync-repo]
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Prepare environment and keystore
+        run: |
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            cp .env.example .env
+          fi
+          if [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+          elif [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Build APK with Gradle
+        run: gradle assembleDebug --stacktrace
+
+      - name: Prepare Release APK Artifact
+        id: apk_meta
+        run: |
+          mkdir -p gitee_artifacts
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.release_tag }}" ]; then
+            TAG_NAME="${{ github.event.inputs.release_tag }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            TAG_NAME="latest"
+          fi
+          
+          APK_FILE=$(ls app/build/outputs/apk/debug/*.apk | head -n 1)
+          OUT_APK="gitee_artifacts/screenshot-manager-${TAG_NAME}.apk"
+          cp "$APK_FILE" "$OUT_APK"
+          
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "apk_path=$OUT_APK" >> $GITHUB_OUTPUT
+          echo "apk_filename=screenshot-manager-${TAG_NAME}.apk" >> $GITHUB_OUTPUT
+
+      - name: Upload APK as GitHub Action Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-manager-${{ steps.apk_meta.outputs.tag_name }}
+          path: ${{ steps.apk_meta.outputs.apk_path }}
+
+      - name: Publish Release to Gitee
+        if: env.GITEE_TOKEN != ''
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USER: ${{ secrets.GITEE_USER || 'ZhaoChenKe' }}
+          GITEE_REPO: ${{ secrets.GITEE_REPO || 'Screenshot-Manager' }}
+          TAG_NAME: ${{ steps.apk_meta.outputs.tag_name }}
+          APK_PATH: ${{ steps.apk_meta.outputs.apk_path }}
+          APK_FILENAME: ${{ steps.apk_meta.outputs.apk_filename }}
+        run: |
+          echo "Creating Release on Gitee for tag: $TAG_NAME..."
+          
+          # 1. 创建 Gitee Release
+          CREATE_RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/${GITEE_USER}/${GITEE_REPO}/releases" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"access_token\": \"${GITEE_TOKEN}\",
+              \"tag_name\": \"${TAG_NAME}\",
+              \"name\": \"截图管家 ${TAG_NAME} 发布\",
+              \"body\": \"截图管家新版本发布，已包含离线OCR识别与相似度图片清理。安装包请下载附件：${APK_FILENAME}\"
+            }")
+            
+          RELEASE_ID=$(echo "$CREATE_RESP" | grep -o '"id":[0-9]*' | head -n 1 | cut -d: -f2)
+          echo "Gitee Release ID: $RELEASE_ID"
+          
+          # 2. 上传 APK 附件到 Gitee Release
+          if [ -n "$RELEASE_ID" ]; then
+            echo "Uploading APK attachment to Gitee Release..."
+            curl -s -X POST "https://gitee.com/api/v5/repos/${GITEE_USER}/${GITEE_REPO}/releases/${RELEASE_ID}/attach_files" \
+              -F "access_token=${GITEE_TOKEN}" \
+              -F "file=@${APK_PATH}"
+            echo "Upload to Gitee Release completed!"
+          else
+            echo "Notice: Could not parse Release ID (tag may already exist or token permissions needed), response was: $CREATE_RESP"
+          fi

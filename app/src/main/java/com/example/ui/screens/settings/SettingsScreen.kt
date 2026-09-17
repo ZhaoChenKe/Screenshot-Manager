@@ -511,7 +511,7 @@ fun SettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = "版本更新服务源", fontWeight = FontWeight.SemiBold)
                             Text(
-                                text = if (prefs.customUpdateUrl.isBlank()) "官方源：GitHub Releases (ZhaoChenKe/Screenshot-Manager)" else prefs.customUpdateUrl,
+                                text = if (prefs.customUpdateUrl.isBlank()) "默认官方源：Gitee Releases (国内极速直连)" else prefs.customUpdateUrl,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1
@@ -666,7 +666,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     Text(
-                        text = "默认通过官方 GitHub 仓库 (ZhaoChenKe/Screenshot-Manager) Releases 检测最新版本。支持配置国内加速镜像代理 (如 ghproxy) 或自建服务器 version.json 链接。",
+                        text = "默认通过 Gitee 官方仓库 (ZhaoChenKe/Screenshot-Manager) Releases 检测最新版本并国内极速下载 APK。亦支持切换为 GitHub Releases 或自建服务器 version.json 链接。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -674,7 +674,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = customUrlInput,
                         onValueChange = { customUrlInput = it },
-                        placeholder = { Text("https://api.github.com/repos/ZhaoChenKe/Screenshot-Manager/releases/latest") },
+                        placeholder = { Text("https://gitee.com/api/v5/repos/ZhaoChenKe/Screenshot-Manager/releases/latest") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )

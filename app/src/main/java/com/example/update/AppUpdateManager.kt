@@ -24,9 +24,12 @@ class AppUpdateManager(private val context: Context) {
     companion object {
         private const val TAG = "AppUpdateManager"
         const val DEFAULT_CHECK_INTERVAL_DAYS = 7 // 默认一周检查一次
-        const val GITHUB_OWNER = "ZhaoChenKe"
-        const val GITHUB_REPO = "Screenshot-Manager"
-        const val DEFAULT_UPDATE_URL = "https://api.github.com/repos/ZhaoChenKe/Screenshot-Manager/releases/latest"
+        const val GITEE_OWNER = "ZhaoChenKe"
+        const val GITEE_REPO = "Screenshot-Manager"
+        // 默认更新源：Gitee Releases 最新发布版本接口（国内直连、极速无网络阻碍）
+        const val DEFAULT_UPDATE_URL = "https://gitee.com/api/v5/repos/ZhaoChenKe/Screenshot-Manager/releases/latest"
+        // GitHub 备用接口
+        const val GITHUB_BACKUP_UPDATE_URL = "https://api.github.com/repos/ZhaoChenKe/Screenshot-Manager/releases/latest"
         const val DEMO_UPDATE_URL = DEFAULT_UPDATE_URL
     }
 
@@ -93,8 +96,12 @@ class AppUpdateManager(private val context: Context) {
                 val json = JSONObject(jsonStr)
 
                 val updateInfo: UpdateInfo? = if (json.has("tag_name")) {
-                    // GitHub Releases API Format
-                    parseGitHubReleaseJson(json, currentVersionCode)
+                    // Gitee or GitHub Releases API Format
+                    if (urlStr.contains("gitee.com")) {
+                        parseGiteeReleaseJson(json, currentVersionCode)
+                    } else {
+                        parseGitHubReleaseJson(json, currentVersionCode)
+                    }
                 } else if (json.has("versionCode") || json.has("versionName")) {
                     // Standard Custom version.json Format
                     val remoteVersionCode = json.optInt("versionCode", 1)
@@ -147,6 +154,66 @@ class AppUpdateManager(private val context: Context) {
     }
 
     /**
+     * 解析 Gitee Releases 最新发布数据
+     */
+    private fun parseGiteeReleaseJson(json: JSONObject, currentVersionCode: Int): UpdateInfo {
+        val rawTag = json.optString("tag_name", "v1.0.0")
+        val cleanVersionName = rawTag.removePrefix("v").removePrefix("V")
+        val releaseName = json.optString("name", "新版本 $rawTag")
+        val body = json.optString("body", "优化系统体验与多项问题修复")
+        val publishedAt = json.optString("created_at", "").take(10)
+
+        var downloadUrl = ""
+        var fileSizeMb = 18.0
+
+        // Gitee 的 release 附件通常存放在 attach_files 数组中，部分版本也兼容 assets
+        val attachFiles = json.optJSONArray("attach_files") ?: json.optJSONArray("assets")
+        if (attachFiles != null && attachFiles.length() > 0) {
+            for (i in 0 until attachFiles.length()) {
+                val asset = attachFiles.getJSONObject(i)
+                val assetName = asset.optString("name", "")
+                if (assetName.endsWith(".apk", ignoreCase = true)) {
+                    downloadUrl = asset.optString("download_url", "")
+                    if (downloadUrl.isBlank()) {
+                        downloadUrl = asset.optString("browser_download_url", "")
+                    }
+                    val sizeBytes = asset.optLong("size", 0L)
+                    if (sizeBytes > 0) {
+                        fileSizeMb = Math.round((sizeBytes / (1024.0 * 1024.0)) * 10.0) / 10.0
+                    }
+                    break
+                }
+            }
+        }
+
+        if (downloadUrl.isBlank()) {
+            downloadUrl = json.optString("html_url", "https://gitee.com/$GITEE_OWNER/$GITEE_REPO/releases")
+        }
+
+        val remoteVersionCode = parseSemanticVersionToCode(cleanVersionName, currentVersionCode + 1)
+
+        val fullChangelog = if (body.isNotBlank()) {
+            if (releaseName.isNotBlank() && !body.contains(releaseName)) {
+                "$releaseName\n\n$body"
+            } else {
+                body
+            }
+        } else {
+            "修复已知问题并提升稳定性"
+        }
+
+        return UpdateInfo(
+            versionCode = remoteVersionCode,
+            versionName = cleanVersionName,
+            changelog = fullChangelog,
+            downloadUrl = downloadUrl,
+            fileSizeMb = fileSizeMb,
+            isForceUpdate = false,
+            publishDate = publishedAt
+        )
+    }
+
+    /**
      * 解析 GitHub Releases 最新发布数据
      */
     private fun parseGitHubReleaseJson(json: JSONObject, currentVersionCode: Int): UpdateInfo {
@@ -176,7 +243,7 @@ class AppUpdateManager(private val context: Context) {
         }
 
         if (downloadUrl.isBlank()) {
-            downloadUrl = json.optString("html_url", "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases")
+            downloadUrl = json.optString("html_url", "https://github.com/ZhaoChenKe/Screenshot-Manager/releases")
         }
 
         val remoteVersionCode = parseSemanticVersionToCode(cleanVersionName, currentVersionCode + 1)
