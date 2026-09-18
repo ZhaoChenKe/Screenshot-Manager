@@ -27,15 +27,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.CheckCircleOutline
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,7 +41,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -79,15 +75,14 @@ import com.example.similarity.SimilarGroup
 import com.example.similarity.SimilarityCategory
 import com.example.ui.components.DeleteConfirmDialog
 import com.example.ui.components.EmptyStateView
+import com.example.ui.theme.DesignTokens
 import com.example.ui.viewmodel.ScreenshotViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 enum class DuplicateFilterTab {
-    ALL,
-    EXACT,
-    SIMILAR
+    ALL, EXACT, SIMILAR
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,19 +96,13 @@ fun DuplicatesScreen(
     val isChecking by viewModel.isCheckingDuplicates.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    var selectedFilter by remember { mutableStateOf(DuplicateFilterTab.ALL) }
-    var selectedIds by remember { mutableStateOf(setOf<Long>()) }
+    var selectedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var singleItemToDelete by remember { mutableStateOf<com.example.data.model.ScreenshotEntity?>(null) }
+    var selectedFilter by remember { mutableStateOf(DuplicateFilterTab.ALL) }
 
-    val allGroupItemIds = remember(similarGroups) {
-        similarGroups.flatMap { it.items }.map { it.id }.toSet()
-    }
-
-    LaunchedEffect(allGroupItemIds) {
-        if (selectedIds.any { it !in allGroupItemIds }) {
-            selectedIds = selectedIds.filter { it in allGroupItemIds }.toSet()
-        }
+    LaunchedEffect(Unit) {
+        viewModel.checkDuplicates()
     }
 
     val filteredGroups = remember(similarGroups, selectedFilter) {
@@ -124,19 +113,23 @@ fun DuplicatesScreen(
         }
     }
 
-    // Calculate total cleanable redundant items (all items except recommendedKeep in each group)
-    val allRedundantIds = remember(filteredGroups) {
-        filteredGroups.flatMap { group ->
-            group.items.filter { it.id != group.recommendedKeepId }.map { it.id }
-        }.toSet()
+    val allRedundantIds = remember(similarGroups) {
+        val set = mutableSetOf<Long>()
+        for (group in similarGroups) {
+            val keepId = group.recommendedKeepId
+            for (item in group.items) {
+                if (item.id != keepId) {
+                    set.add(item.id)
+                }
+            }
+        }
+        set
     }
 
-    // Calculate selected bytes
     val selectedTotalBytes = remember(selectedIds, similarGroups) {
-        similarGroups.flatMap { it.items }
-            .filter { it.id in selectedIds }
-            .distinctBy { it.id }
-            .sumOf { it.fileSize }
+        val allItems = similarGroups.flatMap { it.items }
+        val idToSize = allItems.associate { it.id to it.fileSize }
+        selectedIds.sumOf { idToSize[it] ?: 0L }
     }
 
     Scaffold(
@@ -145,9 +138,9 @@ fun DuplicatesScreen(
                 title = {
                     Column {
                         Text(
-                            text = "检查重复与相似图片",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
+                            text = "重复与相似清理",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
                         )
                         if (similarGroups.isNotEmpty()) {
                             Text(
@@ -160,7 +153,7 @@ fun DuplicatesScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
@@ -173,11 +166,12 @@ fun DuplicatesScreen(
                     ) {
                         if (isChecking) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         } else {
-                            Icon(imageVector = Icons.Default.Refresh, contentDescription = "刷新检测")
+                            Icon(imageVector = Icons.Outlined.Refresh, contentDescription = "刷新检测")
                         }
                     }
                 },
@@ -193,53 +187,58 @@ fun DuplicatesScreen(
                 exit = slideOutVertically(targetOffsetY = { it })
             ) {
                 Surface(
-                    tonalElevation = 8.dp,
-                    shadowElevation = 12.dp,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                    tonalElevation = 0.dp,
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
                             Text(
                                 text = "已选 ${selectedIds.size} 张",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             val formattedSize = Formatter.formatFileSize(context, selectedTotalBytes)
                             Text(
                                 text = "预计释放 $formattedSize 空间",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
-                                onClick = { selectedIds = emptySet() }
+                                onClick = { selectedIds = emptySet() },
+                                shape = DesignTokens.ShapeSmall,
+                                border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                             ) {
-                                Text("取消选择")
+                                Text("取消选择", fontSize = 12.sp)
                             }
 
                             Button(
                                 onClick = { showDeleteConfirmDialog = true },
+                                shape = DesignTokens.ShapeSmall,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.error,
                                     contentColor = MaterialTheme.colorScheme.onError
-                                )
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Delete,
+                                    imageVector = Icons.Outlined.Delete,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(15.dp)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("批量删除")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("批量删除", fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
@@ -249,7 +248,7 @@ fun DuplicatesScreen(
     ) { innerPadding ->
         if (similarGroups.isEmpty()) {
             EmptyStateView(
-                icon = Icons.Default.CleaningServices,
+                icon = Icons.Outlined.CleaningServices,
                 title = "未发现重复或高相似截图",
                 description = "相册中没有检测到完全重复或视觉高度相似的截图。若刚添加了新图片，可点击右上角重新检测。",
                 modifier = Modifier
@@ -280,33 +279,75 @@ fun DuplicatesScreen(
                             FilterChip(
                                 selected = selectedFilter == DuplicateFilterTab.ALL,
                                 onClick = { selectedFilter = DuplicateFilterTab.ALL },
-                                label = { Text("全部 (${similarGroups.size})") }
+                                label = { Text("全部 (${similarGroups.size})") },
+                                shape = DesignTokens.ShapeSmall,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    labelColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = selectedFilter == DuplicateFilterTab.ALL,
+                                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    selectedBorderColor = MaterialTheme.colorScheme.primary,
+                                    borderWidth = DesignTokens.HairlineBorder
+                                )
                             )
                             val exactCount = similarGroups.count { it.category == SimilarityCategory.EXACT_DUPLICATE }
                             FilterChip(
                                 selected = selectedFilter == DuplicateFilterTab.EXACT,
                                 onClick = { selectedFilter = DuplicateFilterTab.EXACT },
-                                label = { Text("完全重复 ($exactCount)") }
+                                label = { Text("完全重复 ($exactCount)") },
+                                shape = DesignTokens.ShapeSmall,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    labelColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = selectedFilter == DuplicateFilterTab.EXACT,
+                                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    selectedBorderColor = MaterialTheme.colorScheme.primary,
+                                    borderWidth = DesignTokens.HairlineBorder
+                                )
                             )
                             val similarCount = similarGroups.count { it.category == SimilarityCategory.HIGH_SIMILARITY }
                             FilterChip(
                                 selected = selectedFilter == DuplicateFilterTab.SIMILAR,
                                 onClick = { selectedFilter = DuplicateFilterTab.SIMILAR },
-                                label = { Text("高相似度 ($similarCount)") }
+                                label = { Text("高相似度 ($similarCount)") },
+                                shape = DesignTokens.ShapeSmall,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    labelColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = selectedFilter == DuplicateFilterTab.SIMILAR,
+                                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    selectedBorderColor = MaterialTheme.colorScheme.primary,
+                                    borderWidth = DesignTokens.HairlineBorder
+                                )
                             )
                         }
 
                         // Smart Select & Quick Actions Bar
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                            shape = DesignTokens.ShapeMedium,
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(14.dp),
+                                    .padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Row(
@@ -318,25 +359,25 @@ fun DuplicatesScreen(
                                         modifier = Modifier
                                             .size(28.dp)
                                             .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                            .background(MaterialTheme.colorScheme.surfaceVariant),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.AutoAwesome,
+                                            imageVector = Icons.Outlined.AutoAwesome,
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(16.dp)
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.size(15.dp)
                                         )
                                     }
                                     Column {
                                         Text(
                                             text = "智能清理助手",
                                             style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
+                                            fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = if (allRedundantIds.isNotEmpty()) "每组已标记 1 张最佳保留，发现 ${allRedundantIds.size} 张建议清理" else "每组已保留最佳图片，未发现多余副本",
+                                            text = if (allRedundantIds.isNotEmpty()) "每组标记 1 张最佳保留，发现 ${allRedundantIds.size} 张建议清理" else "每组已保留最佳图片，未发现多余副本",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -348,52 +389,50 @@ fun DuplicatesScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // 1. Smart Select
                                     OutlinedButton(
                                         onClick = {
                                             selectedIds = allRedundantIds
                                             Toast.makeText(context, "已智能勾选 ${allRedundantIds.size} 张多余截图", Toast.LENGTH_SHORT).show()
                                         },
                                         enabled = allRedundantIds.isNotEmpty(),
-                                        shape = RoundedCornerShape(10.dp),
+                                        shape = DesignTokens.ShapeSmall,
+                                        border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant),
                                         modifier = Modifier.weight(1f),
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                                     ) {
                                         Text("智能勾选 (${allRedundantIds.size})", fontSize = 12.sp)
                                     }
 
-                                    // 2. Direct One-Click Clean Redundant
                                     Button(
                                         onClick = {
                                             selectedIds = allRedundantIds
                                             showDeleteConfirmDialog = true
                                         },
                                         enabled = allRedundantIds.isNotEmpty(),
-                                        shape = RoundedCornerShape(10.dp),
+                                        shape = DesignTokens.ShapeSmall,
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.error,
                                             contentColor = MaterialTheme.colorScheme.onError
                                         ),
                                         modifier = Modifier.weight(1.2f),
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                                     ) {
-                                        Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(15.dp))
+                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("智能清理多余", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text("清理多余项", fontSize = 12.sp, fontWeight = FontWeight.Medium)
                                     }
 
-                                    // 3. Toggle all
                                     val allIds = filteredGroups.flatMap { it.items }.map { it.id }.toSet()
                                     TextButton(
                                         onClick = {
                                             selectedIds = if (selectedIds.size == allIds.size) emptySet() else allIds
                                         },
-                                        shape = RoundedCornerShape(10.dp),
                                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
                                     ) {
                                         Text(
                                             if (selectedIds.size == allIds.size && allIds.isNotEmpty()) "清空" else "全选",
-                                            fontSize = 12.sp
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
@@ -439,7 +478,6 @@ fun DuplicatesScreen(
         )
     }
 
-    // 单张截图删除确认对话框
     if (singleItemToDelete != null) {
         val item = singleItemToDelete!!
         val formattedSize = Formatter.formatFileSize(context, item.fileSize)
@@ -470,14 +508,13 @@ fun SimilarGroupCard(
     onSingleDelete: (com.example.data.model.ScreenshotEntity) -> Unit
 ) {
     val isExact = group.category == SimilarityCategory.EXACT_DUPLICATE
-    val badgeBg = if (isExact) Color(0xFFFFEDD5) else Color(0xFFEDE9FE)
-    val badgeColor = if (isExact) Color(0xFFEA580C) else Color(0xFF7C3AED)
     val badgeText = if (isExact) "100% 完全重复" else "${group.similarityScore}% 高度相似"
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
+        shape = DesignTokens.ShapeMedium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -488,21 +525,21 @@ fun SimilarGroupCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = badgeBg
+                    shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Text(
                         text = badgeText,
-                        color = badgeColor,
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
 
                 Text(
                     text = "共 ${group.items.size} 张",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -515,7 +552,7 @@ fun SimilarGroupCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Items in this group
             LazyRow(
@@ -551,18 +588,19 @@ private fun SimilarItemCard(
 ) {
     val context = LocalContext.current
     val borderModifier = if (isSelected) {
-        Modifier.border(2.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(12.dp))
+        Modifier.border(1.5.dp, MaterialTheme.colorScheme.error, DesignTokens.ShapeSmall)
     } else if (isKeep) {
-        Modifier.border(1.5.dp, Color(0xFF10B981), RoundedCornerShape(12.dp))
+        Modifier.border(1.dp, MaterialTheme.colorScheme.onSurface, DesignTokens.ShapeSmall)
     } else {
-        Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+        Modifier.border(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant, DesignTokens.ShapeSmall)
     }
 
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = DesignTokens.ShapeSmall,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
-            .width(150.dp)
+            .width(140.dp)
             .then(borderModifier)
     ) {
         Column {
@@ -570,7 +608,8 @@ private fun SimilarItemCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .height(170.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onItemClick() }
             ) {
                 AsyncImage(
@@ -587,15 +626,15 @@ private fun SimilarItemCard(
 
                 // Recommendation Badge (Top Left)
                 Surface(
-                    shape = RoundedCornerShape(bottomEnd = 8.dp),
-                    color = if (isKeep) Color(0xFF10B981) else Color(0xCC000000),
+                    shape = RoundedCornerShape(bottomEnd = 6.dp),
+                    color = if (isKeep) Color.Black.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.5f),
                     modifier = Modifier.align(Alignment.TopStart)
                 ) {
                     Text(
-                        text = if (isKeep) "建议保留" else "冗余项",
+                        text = if (isKeep) "建议保留" else "多余副本",
                         color = Color.White,
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
@@ -605,18 +644,18 @@ private fun SimilarItemCard(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
-                        .size(28.dp)
+                        .size(24.dp)
                         .clip(CircleShape)
-                        .background(if (isSelected) MaterialTheme.colorScheme.error else Color.Black.copy(alpha = 0.5f))
+                        .background(if (isSelected) MaterialTheme.colorScheme.error else Color.Black.copy(alpha = 0.45f))
                         .clickable { onToggleSelect() },
                     contentAlignment = Alignment.Center
                 ) {
                     if (isSelected) {
                         Icon(
-                            imageVector = Icons.Default.Check,
+                            imageVector = Icons.Outlined.Check,
                             contentDescription = "已选择",
                             tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
@@ -636,7 +675,7 @@ private fun SimilarItemCard(
                 Text(
                     text = if (item.width > 0) "${item.width}x${item.height} · $formattedSize" else formattedSize,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -645,18 +684,13 @@ private fun SimilarItemCard(
 
                 OutlinedButton(
                     onClick = onDeleteClick,
+                    shape = RoundedCornerShape(6.dp),
+                    border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(30.dp),
+                        .height(28.dp),
                     contentPadding = PaddingValues(0.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text("删除", fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
                 }
             }

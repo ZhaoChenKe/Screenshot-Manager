@@ -29,15 +29,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
@@ -67,7 +67,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,7 +75,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,7 +83,9 @@ import coil.request.ImageRequest
 import com.example.data.db.AppDatabase
 import com.example.data.model.ScreenshotWithDetails
 import com.example.ui.components.DeleteConfirmDialog
+import com.example.ui.theme.DesignTokens
 import com.example.ui.viewmodel.ScreenshotViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -99,30 +99,33 @@ fun ScreenshotDetailScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
     var itemWithDetails by remember { mutableStateOf<ScreenshotWithDetails?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
     // Dialog & Dropdown States
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showEditTitleDialog by remember { mutableStateOf(false) }
+    var editTitleInput by remember { mutableStateOf("") }
     var showCategoryDropdown by remember { mutableStateOf(false) }
     var showAddTagDialog by remember { mutableStateOf(false) }
     var newTagInput by remember { mutableStateOf("") }
-    var showEditTitleDialog by remember { mutableStateOf(false) }
-    var editTitleInput by remember { mutableStateOf("") }
 
-    // Image Zoom / Pan State
+    // Zoom & Pan state for Image
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+
     val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
         scale = (scale * zoomChange).coerceIn(1f, 4f)
-        if (scale > 1f) {
-            offset += offsetChange
-        } else {
+        if (scale == 1f) {
             offset = Offset.Zero
+        } else {
+            offset += offsetChange
         }
     }
 
     suspend fun refreshData() {
+        isLoading = true
         itemWithDetails = viewModel.getScreenshotById(screenshotId)
         isLoading = false
     }
@@ -134,35 +137,41 @@ fun ScreenshotDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = "截图详情", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        text = "截图详情",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
                     IconButton(
                         onClick = {
-                            val uriStr = itemWithDetails?.screenshot?.uri ?: return@IconButton
-                            try {
+                            val uri = itemWithDetails?.screenshot?.uri?.let { Uri.parse(it) }
+                            if (uri != null) {
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "image/*"
-                                    putExtra(Intent.EXTRA_STREAM, Uri.parse(uriStr))
+                                    putExtra(Intent.EXTRA_STREAM, uri)
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
                                 context.startActivity(Intent.createChooser(shareIntent, "分享截图"))
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "分享失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     ) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = "分享截图")
+                        Icon(imageVector = Icons.Outlined.Share, contentDescription = "分享")
                     }
-                    IconButton(
-                        onClick = { showDeleteConfirmDialog = true },
-                        modifier = Modifier.testTag("detail_delete_button")
-                    ) {
-                        Icon(imageVector = Icons.Default.Delete, contentDescription = "删除截图", tint = MaterialTheme.colorScheme.error)
+
+                    IconButton(onClick = { showDeleteConfirmDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "删除",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             )
@@ -170,7 +179,7 @@ fun ScreenshotDetailScreen(
         bottomBar = {
             BottomAppBar(
                 containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp
+                tonalElevation = 0.dp
             ) {
                 Row(
                     modifier = Modifier
@@ -181,13 +190,22 @@ fun ScreenshotDetailScreen(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            viewModel.reprocessScreenshot(screenshotId)
-                            Toast.makeText(context, "正在重新分析...", Toast.LENGTH_SHORT).show()
-                        }
+                            val uri = itemWithDetails?.screenshot?.uri?.let { Uri.parse(it) }
+                            if (uri != null) {
+                                Toast.makeText(context, "正在重新识别...", Toast.LENGTH_SHORT).show()
+                                coroutineScope.launch {
+                                    viewModel.reprocessScreenshot(screenshotId)
+                                    refreshData()
+                                    Toast.makeText(context, "识别完成", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        shape = DesignTokens.ShapeSmall,
+                        border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant)
                     ) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("重新识别")
+                        Text("重新识别", style = MaterialTheme.typography.labelMedium)
                     }
 
                     Button(
@@ -200,11 +218,16 @@ fun ScreenshotDetailScreen(
                             } else {
                                 Toast.makeText(context, "暂无提取的文字", Toast.LENGTH_SHORT).show()
                             }
-                        }
+                        },
+                        shape = DesignTokens.ShapeSmall,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
-                        Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("复制文字")
+                        Text("复制文字", style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -218,7 +241,11 @@ fun ScreenshotDetailScreen(
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(if (isLoading) "正在加载..." else "截图不存在或已被删除")
+                Text(
+                    text = if (isLoading) "正在加载..." else "截图不存在或已被删除",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         } else {
             val screenshot = currentItem.screenshot
@@ -236,8 +263,7 @@ fun ScreenshotDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(340.dp)
-                        .background(Color.Black)
-                        .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
+                        .background(Color(0xFF121212))
                         .transformable(state = transformState),
                     contentAlignment = Alignment.Center
                 ) {
@@ -282,36 +308,40 @@ fun ScreenshotDetailScreen(
                             val title = if (screenshot.title.isNotBlank()) screenshot.title else screenshot.fileName
                             Text(
                                 text = title,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.weight(1f, fill = false)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
-                                imageVector = Icons.Default.Edit,
+                                imageVector = Icons.Outlined.Edit,
                                 contentDescription = "修改标题",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(15.dp)
                             )
                         }
 
                         // Category Dropdown Button
                         Box {
                             Surface(
-                                shape = RoundedCornerShape(20.dp),
+                                shape = DesignTokens.ShapeSmall,
                                 color = MaterialTheme.colorScheme.surfaceVariant,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                                border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant),
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
+                                    .clip(DesignTokens.ShapeSmall)
                                     .clickable { showCategoryDropdown = true }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    val catIcon = category?.icon ?: "📷"
                                     val catName = category?.name ?: "未分类"
-                                    Text(text = "$catIcon $catName", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(
+                                        text = catName,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
 
@@ -321,7 +351,7 @@ fun ScreenshotDetailScreen(
                             ) {
                                 AppDatabase.DEFAULT_CATEGORIES.forEach { cat ->
                                     DropdownMenuItem(
-                                        text = { Text("${cat.icon} ${cat.name}") },
+                                        text = { Text(cat.name) },
                                         onClick = {
                                             viewModel.updateCategory(screenshot.id, cat.id)
                                             itemWithDetails = itemWithDetails?.copy(
@@ -343,8 +373,8 @@ fun ScreenshotDetailScreen(
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surface
                             ),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                            shape = DesignTokens.ShapeCard,
+                            border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
                             Row(
@@ -352,10 +382,10 @@ fun ScreenshotDetailScreen(
                                 verticalAlignment = Alignment.Top
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
+                                    imageVector = Icons.Outlined.AutoAwesome,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
@@ -369,7 +399,12 @@ fun ScreenshotDetailScreen(
 
                     // Tags FlowRow
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = "标签", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "标签",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Spacer(modifier = Modifier.height(6.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -380,6 +415,7 @@ fun ScreenshotDetailScreen(
                                 selected = false,
                                 onClick = {},
                                 label = { Text("#${tag.name}") },
+                                shape = DesignTokens.ShapeSmall,
                                 trailingIcon = {
                                     IconButton(
                                         onClick = {
@@ -391,7 +427,11 @@ fun ScreenshotDetailScreen(
                                         },
                                         modifier = Modifier.size(16.dp)
                                     ) {
-                                        Icon(imageVector = Icons.Default.Close, contentDescription = "删除标签", modifier = Modifier.size(12.dp))
+                                        Icon(
+                                            imageVector = Icons.Outlined.Close,
+                                            contentDescription = "删除标签",
+                                            modifier = Modifier.size(12.dp)
+                                        )
                                     }
                                 }
                             )
@@ -399,7 +439,8 @@ fun ScreenshotDetailScreen(
 
                         SuggestionChip(
                             onClick = { showAddTagDialog = true },
-                            label = { Text("+ 添加标签") }
+                            label = { Text("+ 添加标签") },
+                            shape = DesignTokens.ShapeSmall
                         )
                     }
 
@@ -410,7 +451,12 @@ fun ScreenshotDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "提取的文字内容", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "提取的文字内容",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         IconButton(
                             onClick = {
                                 val text = screenshot.ocrText
@@ -421,15 +467,19 @@ fun ScreenshotDetailScreen(
                                 }
                             }
                         ) {
-                            Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "复制文字", modifier = Modifier.size(18.dp))
+                            Icon(
+                                imageVector = Icons.Outlined.ContentCopy,
+                                contentDescription = "复制文字",
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = DesignTokens.ShapeCard,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                        border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Text(
@@ -442,13 +492,18 @@ fun ScreenshotDetailScreen(
 
                     // Metadata Section
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = "图片参数", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "图片参数",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = DesignTokens.ShapeCard,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                        border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -494,12 +549,19 @@ fun ScreenshotDetailScreen(
     if (showAddTagDialog) {
         AlertDialog(
             onDismissRequest = { showAddTagDialog = false },
-            title = { Text("添加标签") },
+            title = {
+                Text(
+                    text = "添加标签",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
             text = {
                 OutlinedTextField(
                     value = newTagInput,
                     onValueChange = { newTagInput = it },
                     placeholder = { Text("输入标签名称，如 显卡 / 账单") },
+                    shape = DesignTokens.ShapeSmall,
                     singleLine = true
                 )
             },
@@ -513,19 +575,20 @@ fun ScreenshotDetailScreen(
                             viewModel.updateTags(screenshotId, updatedList)
                             newTagInput = ""
                             showAddTagDialog = false
-                            // Refresh
                             coroutineScope.launch { refreshData() }
                         }
                     }
                 ) {
-                    Text("添加")
+                    Text("保存", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAddTagDialog = false }) {
-                    Text("取消")
+                    Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            }
+            },
+            shape = DesignTokens.ShapeCard,
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -533,35 +596,44 @@ fun ScreenshotDetailScreen(
     if (showEditTitleDialog) {
         AlertDialog(
             onDismissRequest = { showEditTitleDialog = false },
-            title = { Text("修改标题") },
+            title = {
+                Text(
+                    text = "修改标题",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
             text = {
                 OutlinedTextField(
                     value = editTitleInput,
                     onValueChange = { editTitleInput = it },
-                    placeholder = { Text("输入截图标题") },
+                    placeholder = { Text("输入新标题") },
+                    shape = DesignTokens.ShapeSmall,
                     singleLine = true
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val newTitle = editTitleInput.trim()
-                        val current = itemWithDetails?.screenshot
-                        if (current != null && newTitle.isNotBlank()) {
-                            val updated = current.copy(title = newTitle)
-                            itemWithDetails = itemWithDetails?.copy(screenshot = updated)
+                        if (editTitleInput.isNotBlank()) {
+                            viewModel.updateTitle(screenshotId, editTitleInput.trim())
+                            itemWithDetails = itemWithDetails?.let {
+                                it.copy(screenshot = it.screenshot.copy(title = editTitleInput.trim()))
+                            }
                             showEditTitleDialog = false
                         }
                     }
                 ) {
-                    Text("确定")
+                    Text("保存", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditTitleDialog = false }) {
-                    Text("取消")
+                    Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            }
+            },
+            shape = DesignTokens.ShapeCard,
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 }
@@ -570,9 +642,19 @@ fun ScreenshotDetailScreen(
 fun MetadataRow(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text = value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }

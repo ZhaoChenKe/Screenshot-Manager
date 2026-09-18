@@ -24,10 +24,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Clear
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,15 +39,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -63,6 +60,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.ScreenshotWithDetails
 import com.example.ui.components.EmptyStateView
+import com.example.ui.theme.DesignTokens
 import com.example.ui.viewmodel.ScreenshotViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -90,21 +88,22 @@ fun SearchScreen(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(42.dp),
-                        shape = RoundedCornerShape(21.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f)
+                            .height(40.dp),
+                        shape = DesignTokens.ShapeSmall,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 12.dp),
+                                .padding(horizontal = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Search,
+                                imageVector = Icons.Outlined.Search,
                                 contentDescription = "搜索",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Box(
@@ -115,7 +114,7 @@ fun SearchScreen(
                                     Text(
                                         text = "搜索截图文字、标题、关键词...",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -139,13 +138,13 @@ fun SearchScreen(
                             if (searchQuery.isNotBlank()) {
                                 IconButton(
                                     onClick = { viewModel.setSearchQuery("") },
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(24.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Clear,
+                                        imageVector = Icons.Outlined.Clear,
                                         contentDescription = "清除输入",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
@@ -155,7 +154,7 @@ fun SearchScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "返回"
                         )
                     }
@@ -177,20 +176,49 @@ fun SearchScreen(
                     FilterChip(
                         selected = selectedCategory == null,
                         onClick = { viewModel.selectSearchCategory(null) },
-                        label = { Text("全部分类") }
+                        label = { Text("全部分类") },
+                        shape = DesignTokens.ShapeSmall,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = selectedCategory == null,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant,
+                            selectedBorderColor = MaterialTheme.colorScheme.primary,
+                            borderWidth = DesignTokens.HairlineBorder
+                        )
                     )
                 }
                 items(categoriesWithCount) { cat ->
+                    val isSelected = selectedCategory == cat.id
                     FilterChip(
-                        selected = selectedCategory == cat.id,
+                        selected = isSelected,
                         onClick = {
-                            if (selectedCategory == cat.id) {
+                            if (isSelected) {
                                 viewModel.selectSearchCategory(null)
                             } else {
                                 viewModel.selectSearchCategory(cat.id)
                             }
                         },
-                        label = { Text("${cat.icon} ${cat.name}") }
+                        label = { Text(cat.name) },
+                        shape = DesignTokens.ShapeSmall,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant,
+                            selectedBorderColor = MaterialTheme.colorScheme.primary,
+                            borderWidth = DesignTokens.HairlineBorder
+                        )
                     )
                 }
             }
@@ -203,9 +231,9 @@ fun SearchScreen(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "大家都在搜",
+                        text = "常见搜索词",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -215,9 +243,9 @@ fun SearchScreen(
                         items(hotKeywords) { kw ->
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(DesignTokens.ShapeSmall)
                                     .background(MaterialTheme.colorScheme.surface)
-                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                                    .border(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant, DesignTokens.ShapeSmall)
                                     .clickable { viewModel.setSearchQuery(kw) }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
@@ -241,14 +269,14 @@ fun SearchScreen(
                 ) {
                     Text(
                         text = "找到 ${searchResults.size} 张相关截图",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 if (searchResults.isEmpty()) {
                     EmptyStateView(
-                        icon = Icons.Default.SearchOff,
+                        icon = Icons.Outlined.SearchOff,
                         title = "未找到相关截图",
                         description = "尝试更换关键词，或者检查是否已完整识别相册截图。"
                     )
@@ -284,12 +312,12 @@ fun SearchResultCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(DesignTokens.ShapeCard)
             .clickable(onClick = onClick)
             .testTag("search_result_card_${screenshot.id}"),
-        shape = RoundedCornerShape(14.dp),
+        shape = DesignTokens.ShapeCard,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+        border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -301,9 +329,9 @@ fun SearchResultCard(
             // Thumbnail
             Box(
                 modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surface)
+                    .size(68.dp)
+                    .clip(DesignTokens.ShapeSmall)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -329,20 +357,24 @@ fun SearchResultCard(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    val catIcon = item.category?.icon ?: "📷"
                     val catName = item.category?.name ?: "其他"
-                    Text(
-                        text = "$catIcon $catName",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = 6.dp)
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            text = catName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -368,7 +400,7 @@ fun SearchResultCard(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                 Text(

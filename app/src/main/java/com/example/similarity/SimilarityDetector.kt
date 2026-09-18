@@ -23,67 +23,95 @@ object SimilarityDetector {
 
     /**
      * Analyzes a list of screenshots and groups exact duplicates and highly similar images.
+     * Uses transitive clustering (connected components) so that groups with 3, 4 or more
+     * similar/duplicate screenshots are properly grouped together into a single cluster.
      */
     fun findSimilarGroups(screenshots: List<ScreenshotEntity>): List<SimilarGroup> {
         if (screenshots.size < 2) return emptyList()
 
-        val visited = mutableSetOf<Long>()
+        val n = screenshots.size
+        // Pre-compute pairwise matches
+        val adj = Array(n) { mutableListOf<Pair<Int, CompareResult>>() }
+
+        for (i in 0 until n) {
+            val a = screenshots[i]
+            for (j in (i + 1) until n) {
+                val b = screenshots[j]
+                val result = compareScreenshots(a, b)
+                if (result.isMatch) {
+                    adj[i].add(Pair(j, result))
+                    adj[j].add(Pair(i, result))
+                }
+            }
+        }
+
+        // Find connected components using BFS/DFS
+        val visited = BooleanArray(n)
         val groups = mutableListOf<SimilarGroup>()
 
-        // Sort by create time descending
-        val sorted = screenshots.sortedByDescending { it.createTime }
+        for (i in 0 until n) {
+            if (visited[i] || adj[i].isEmpty()) continue
 
-        for (i in sorted.indices) {
-            val base = sorted[i]
-            if (base.id in visited) continue
+            val clusterIndices = mutableListOf<Int>()
+            val queue = ArrayDeque<Int>()
+            queue.add(i)
+            visited[i] = true
 
-            val matchedItems = mutableListOf(base)
             var highestScore = 0
-            var highestCategory = SimilarityCategory.HIGH_SIMILARITY
+            var hasExact = false
             var bestReason = ""
 
-            for (j in (i + 1) until sorted.size) {
-                val candidate = sorted[j]
-                if (candidate.id in visited) continue
+            while (queue.isNotEmpty()) {
+                val curr = queue.removeFirst()
+                clusterIndices.add(curr)
 
-                val (isMatch, category, score, reason) = compareScreenshots(base, candidate)
-                if (isMatch) {
-                    matchedItems.add(candidate)
-                    visited.add(candidate.id)
-                    if (score > highestScore) {
-                        highestScore = score
-                        highestCategory = category
-                        bestReason = reason
+                for ((neighbor, result) in adj[curr]) {
+                    if (result.category == SimilarityCategory.EXACT_DUPLICATE) {
+                        hasExact = true
+                    }
+                    if (result.score > highestScore) {
+                        highestScore = result.score
+                        bestReason = result.reason
+                    }
+                    if (!visited[neighbor]) {
+                        visited[neighbor] = true
+                        queue.add(neighbor)
                     }
                 }
             }
 
-            if (matchedItems.size > 1) {
-                visited.add(base.id)
+            if (clusterIndices.size > 1) {
+                val clusterItems = clusterIndices.map { screenshots[it] }
+                    .sortedByDescending { it.createTime }
 
-                // Pick the best screenshot to keep:
-                // 1. Has non-empty title/summary
-                // 2. Longer OCR text (more readable)
-                // 3. Earliest or clearest
-                val recommended = matchedItems.maxWithOrNull(
+                val recommended = clusterItems.maxWithOrNull(
                     compareBy<ScreenshotEntity> { it.ocrText.length }
                         .thenBy { it.summary.length }
                         .thenBy { it.fileSize }
-                ) ?: base
+                ) ?: clusterItems.first()
 
-                val defaultReason = if (highestCategory == SimilarityCategory.EXACT_DUPLICATE) {
-                    "相同文件指纹或完全一致的内容"
+                val category = if (hasExact && highestScore >= 98) {
+                    SimilarityCategory.EXACT_DUPLICATE
                 } else {
-                    "连续短时间截屏，画面与排版高度重叠"
+                    SimilarityCategory.HIGH_SIMILARITY
                 }
 
+                val finalReason = if (bestReason.isNotBlank()) {
+                    bestReason
+                } else if (category == SimilarityCategory.EXACT_DUPLICATE) {
+                    "相同文件特征或内容高度一致"
+                } else {
+                    "连拍截屏或界面内容高度重叠"
+                }
+
+                val baseItem = clusterItems.first()
                 groups.add(
                     SimilarGroup(
-                        groupId = "group_${base.id}",
-                        category = highestCategory,
-                        similarityScore = if (highestScore > 0) highestScore else if (highestCategory == SimilarityCategory.EXACT_DUPLICATE) 100 else 88,
-                        reason = if (bestReason.isNotBlank()) bestReason else defaultReason,
-                        items = matchedItems,
+                        groupId = "group_${baseItem.id}",
+                        category = category,
+                        similarityScore = if (highestScore > 0) highestScore else if (category == SimilarityCategory.EXACT_DUPLICATE) 100 else 88,
+                        reason = finalReason,
+                        items = clusterItems,
                         recommendedKeepId = recommended.id
                     )
                 )
@@ -127,10 +155,12 @@ object SimilarityDetector {
             )
         }
 
-        // 3. Exact Duplicate by OCR Text (Length >= 20 characters)
+        // Clean OCR text
         val cleanA = a.ocrText.replace("\\s+".toRegex(), "")
         val cleanB = b.ocrText.replace("\\s+".toRegex(), "")
-        if (cleanA.length >= 20 && cleanA == cleanB) {
+
+        // 3. Exact Duplicate by OCR Text (Length >= 10 characters)
+        if (cleanA.length >= 10 && cleanA == cleanB) {
             return CompareResult(
                 isMatch = true,
                 category = SimilarityCategory.EXACT_DUPLICATE,
@@ -139,40 +169,69 @@ object SimilarityDetector {
             )
         }
 
-        // 4. Burst / Rapid Screenshots within 20 seconds
-        val timeDiff = abs(a.createTime - b.createTime)
-        val isRapid = timeDiff <= 20_000L
         val sameDimensions = (a.width > 0 && a.width == b.width && a.height > 0 && a.height == b.height)
+        val timeDiff = abs(a.createTime - b.createTime)
 
-        if (isRapid && sameDimensions) {
+        // 4. Consecutive / Burst screenshots with same dimensions within 3 minutes (180s)
+        if (sameDimensions && timeDiff <= 180_000L) {
             val minSize = min(a.fileSize, b.fileSize).toDouble()
             val maxSize = max(a.fileSize, b.fileSize).toDouble()
             val sizeRatio = if (maxSize > 0) minSize / maxSize else 1.0
 
-            if (sizeRatio >= 0.85) {
-                val score = (85 + (sizeRatio * 13)).toInt().coerceIn(88, 98)
+            // If file size ratio >= 0.70, it's almost certainly the same device & same app screen flow
+            if (sizeRatio >= 0.70) {
+                val score = (82 + (sizeRatio * 16)).toInt().coerceIn(85, 98)
+                val timeDesc = if (timeDiff <= 20_000L) "连续快速截屏" else "相近时间连拍截屏"
                 return CompareResult(
                     isMatch = true,
                     category = SimilarityCategory.HIGH_SIMILARITY,
                     score = score,
-                    reason = "20秒内连续截屏，画面高度相似 (${score}%)"
+                    reason = "$timeDesc，画面排版高度一致 (${score}%)"
                 )
             }
         }
 
-        // 5. OCR Text Overlap & Similarity (for non-rapid but visually same app screens)
-        if (cleanA.length >= 25 && cleanB.length >= 25) {
+        // 5. Same dimensions & very similar file size (within 5% difference) regardless of time
+        if (sameDimensions && a.fileSize > 0 && b.fileSize > 0) {
+            val minSize = min(a.fileSize, b.fileSize).toDouble()
+            val maxSize = max(a.fileSize, b.fileSize).toDouble()
+            val sizeRatio = minSize / maxSize
+            if (sizeRatio >= 0.95) {
+                // If OCR is also identical or nearly identical or empty (e.g. photo/graph screenshot)
+                if (cleanA.isEmpty() && cleanB.isEmpty()) {
+                    return CompareResult(
+                        isMatch = true,
+                        category = SimilarityCategory.HIGH_SIMILARITY,
+                        score = 92,
+                        reason = "同分辨率且文件大小极其接近 (92%)"
+                    )
+                }
+            }
+        }
+
+        // 6. OCR Text Overlap & Similarity (for screens with recognizable text)
+        if (cleanA.length >= 15 && cleanB.length >= 15) {
             val similarity = calculateTextSimilarity(cleanA, cleanB)
-            if (similarity >= 0.75) {
-                val score = (similarity * 100).toInt().coerceIn(80, 99)
+            if (similarity >= 0.65) {
+                val score = (similarity * 100).toInt().coerceIn(75, 99)
                 val cat = if (score >= 98) SimilarityCategory.EXACT_DUPLICATE else SimilarityCategory.HIGH_SIMILARITY
                 return CompareResult(
                     isMatch = true,
                     category = cat,
                     score = score,
-                    reason = "界面文字相似度达 ${score}%"
+                    reason = "界面文本重合度达 ${score}%"
                 )
             }
+        }
+
+        // 7. Same Title and Category with similar file size
+        if (a.title.isNotBlank() && a.title == b.title && a.categoryId == b.categoryId && sameDimensions) {
+            return CompareResult(
+                isMatch = true,
+                category = SimilarityCategory.HIGH_SIMILARITY,
+                score = 88,
+                reason = "同类别同标题截图，界面高度相近 (88%)"
+            )
         }
 
         return CompareResult(isMatch = false, category = SimilarityCategory.HIGH_SIMILARITY, score = 0, reason = "")

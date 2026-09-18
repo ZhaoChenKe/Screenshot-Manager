@@ -237,6 +237,11 @@ class ScreenshotRepository(
         screenshotDao.updateScreenshot(item.copy(categoryId = categoryId))
     }
 
+    suspend fun updateTitle(screenshotId: Long, title: String) = withContext(Dispatchers.IO) {
+        val item = screenshotDao.getScreenshotById(screenshotId) ?: return@withContext
+        screenshotDao.updateScreenshot(item.copy(title = title))
+    }
+
     suspend fun updateTags(screenshotId: Long, tags: List<String>) = withContext(Dispatchers.IO) {
         tagDao.setTagsForScreenshot(screenshotId, tags)
     }

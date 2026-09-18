@@ -14,14 +14,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,8 +35,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.theme.DesignTokens
 import com.example.ui.util.CategoryUiHelper
 import com.example.ui.viewmodel.ScreenshotViewModel
 
@@ -58,7 +55,7 @@ fun CategoriesScreen(
                     Text(
                         text = "分类浏览",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             )
@@ -83,20 +80,20 @@ fun CategoriesScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(DesignTokens.ShapeCard)
                         .clickable { onNavigateToCategoryDetail(cat.id) }
                         .testTag("category_card_${cat.id}"),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = DesignTokens.ShapeCard,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                    border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(14.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -105,33 +102,33 @@ fun CategoriesScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(style.lightBgColor),
+                                    .size(40.dp)
+                                    .clip(DesignTokens.ShapeSmall)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = style.icon,
                                     contentDescription = cat.name,
-                                    tint = style.accentColor,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowForwardIos,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-                                modifier = Modifier.size(13.dp)
+                                modifier = Modifier.size(12.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = cat.name,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "${cat.count} 张截图",
                             style = MaterialTheme.typography.labelSmall,
@@ -143,4 +140,3 @@ fun CategoriesScreen(
         }
     }
 }
-

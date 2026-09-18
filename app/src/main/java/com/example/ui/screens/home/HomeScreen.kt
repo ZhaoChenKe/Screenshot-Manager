@@ -6,6 +6,10 @@ import android.os.Build
 import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,23 +35,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.PendingActions
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.PendingActions
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
-import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Checklist
+import com.example.ui.theme.DesignTokens
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -194,7 +194,7 @@ fun HomeScreen(
                             isBatchMode = false
                             selectedBatchIds = emptySet()
                         }) {
-                            Icon(imageVector = Icons.Default.Close, contentDescription = "退出批量管理")
+                            Icon(imageVector = Icons.Outlined.Close, contentDescription = "退出批量管理")
                         }
                     },
                     actions = {
@@ -271,9 +271,9 @@ fun HomeScreen(
                             modifier = Modifier.testTag("home_load_samples_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.AutoAwesome,
+                                imageVector = Icons.Outlined.AutoAwesome,
                                 contentDescription = "导入演示示例截图",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         IconButton(
@@ -281,7 +281,7 @@ fun HomeScreen(
                             modifier = Modifier.testTag("home_refresh_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Refresh,
+                                imageVector = Icons.Outlined.Refresh,
                                 contentDescription = "扫描相册截图"
                             )
                         }
@@ -290,7 +290,7 @@ fun HomeScreen(
                             modifier = Modifier.testTag("home_settings_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Settings,
+                                imageVector = Icons.Outlined.Settings,
                                 contentDescription = "设置"
                             )
                         }
@@ -344,7 +344,7 @@ fun HomeScreen(
                                 )
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Delete,
+                                    imageVector = Icons.Outlined.Delete,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -376,29 +376,29 @@ fun HomeScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(DesignTokens.ShapeMedium)
                         .clickable(onClick = onNavigateToSearch)
                         .testTag("home_search_bar_trigger"),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
+                    shape = DesignTokens.ShapeMedium,
+                    border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                            .padding(horizontal = 14.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Search,
                             contentDescription = "搜索",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = "搜索截图文字、价格、商品、单号...",
                             style = MaterialTheme.typography.bodyMedium,
@@ -406,11 +406,11 @@ fun HomeScreen(
                             modifier = Modifier.weight(1f)
                         )
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Text(
-                                text = "AI·OCR",
+                                text = "OCR",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp,
@@ -435,7 +435,7 @@ fun HomeScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.Security,
+                                    imageVector = Icons.Outlined.Security,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
@@ -484,7 +484,7 @@ fun HomeScreen(
                     StatCard(
                         title = "全部截图",
                         count = totalCount,
-                        icon = Icons.Default.Collections,
+                        icon = Icons.Outlined.Collections,
                         containerColor = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
@@ -492,9 +492,9 @@ fun HomeScreen(
                     StatCard(
                         title = "待整理",
                         count = unprocessedCount,
-                        icon = Icons.Default.PendingActions,
+                        icon = Icons.Outlined.PendingActions,
                         containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = if (unprocessedCount > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = { viewModel.startProcessPending() },
                         modifier = Modifier.weight(1f)
                     )
@@ -502,9 +502,9 @@ fun HomeScreen(
                     StatCard(
                         title = "重复/相似",
                         count = dupCount,
-                        icon = Icons.Default.CleaningServices,
+                        icon = Icons.Outlined.CleaningServices,
                         containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = if (dupCount > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = onNavigateToDuplicates,
                         modifier = Modifier.weight(1f)
                     )
@@ -619,8 +619,8 @@ fun HomeScreen(
 
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
-                                color = if (isSelected) style.accentColor else MaterialTheme.colorScheme.surface,
-                                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
+                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surface,
+                                border = if (isSelected) null else BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(14.dp))
                                     .clickable {
@@ -635,7 +635,7 @@ fun HomeScreen(
                                     Icon(
                                         imageVector = style.icon,
                                         contentDescription = cat.name,
-                                        tint = if (isSelected) Color.White else style.accentColor,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(15.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -643,19 +643,19 @@ fun HomeScreen(
                                         text = cat.name,
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                                        color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
                                     )
                                     if (cat.count > 0) {
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Surface(
                                             shape = CircleShape,
-                                            color = if (isSelected) Color.White.copy(alpha = 0.25f) else style.lightBgColor
+                                            color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant
                                         ) {
                                             Text(
                                                 text = "${cat.count}",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isSelected) Color.White else style.accentColor,
+                                                color = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                                             )
                                         }
@@ -739,7 +739,7 @@ fun HomeScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Refresh,
+                                        imageVector = Icons.Outlined.Refresh,
                                         contentDescription = "刷新",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(13.dp)
@@ -769,7 +769,7 @@ fun HomeScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Checklist,
+                                        imageVector = Icons.Outlined.Checklist,
                                         contentDescription = null,
                                         tint = if (isBatchMode) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(14.dp)
@@ -805,7 +805,7 @@ fun HomeScreen(
                         )
                     } else {
                         EmptyStateView(
-                            icon = Icons.Default.Collections,
+                            icon = Icons.Outlined.Collections,
                             title = "暂无截图",
                             description = "相册中暂未检测到截图。您可以一键导入演示示例截图体验全部功能，或点击扫描设备相册。",
                             actionButtonText = "导入演示示例截图",

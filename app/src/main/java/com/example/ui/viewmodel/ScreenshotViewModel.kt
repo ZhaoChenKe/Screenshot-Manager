@@ -116,8 +116,9 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun startScan() {
-        viewModelScope.launch {
-            repository.scanAndSyncScreenshots(viewModelScope)
+        // Use applicationScope so backgrounding the app or switching screens will continue scanning and processing
+        app.applicationScope.launch {
+            repository.scanAndSyncScreenshots(app.applicationScope)
             preferencesRepo.setHasCompletedFirstScan(true)
             checkDuplicates()
         }
@@ -152,6 +153,12 @@ class ScreenshotViewModel(application: Application) : AndroidViewModel(applicati
     fun updateCategory(screenshotId: Long, categoryId: String) {
         viewModelScope.launch {
             repository.updateCategory(screenshotId, categoryId)
+        }
+    }
+
+    fun updateTitle(screenshotId: Long, title: String) {
+        viewModelScope.launch {
+            repository.updateTitle(screenshotId, title)
         }
     }
 

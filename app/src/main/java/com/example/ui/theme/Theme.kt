@@ -13,50 +13,62 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme =
   darkColorScheme(
-    primary = Color(0xFFF4F4F5),
-    onPrimary = Color(0xFF18181B),
-    primaryContainer = Color(0xFF27272A),
-    onPrimaryContainer = Color(0xFFF4F4F5),
-    secondary = Color(0xFFD4D4D8),
-    onSecondary = Color(0xFF18181B),
-    secondaryContainer = Color(0xFF2E2E35),
-    onSecondaryContainer = Color(0xFFE4E4E7),
-    tertiary = BrandAccentAmber,
-    onTertiary = Color.White,
-    tertiaryContainer = Color(0xFF3B2816),
-    onTertiaryContainer = Color(0xFFFED7AA),
+    primary = Color(0xFFFAFAFA),
+    onPrimary = Neutral1000,
+    primaryContainer = Neutral800,
+    onPrimaryContainer = Color(0xFFFAFAFA),
+    secondary = Neutral300,
+    onSecondary = Neutral1000,
+    secondaryContainer = Neutral800,
+    onSecondaryContainer = Color(0xFFEDEDF0),
+    tertiary = Neutral400,
+    onTertiary = Neutral1000,
+    tertiaryContainer = Neutral800,
+    onTertiaryContainer = Color(0xFFEDEDF0),
     background = BackgroundDark,
     onBackground = OnSurfaceDark,
     surface = SurfaceDark,
     onSurface = OnSurfaceDark,
     surfaceVariant = SurfaceVariantDark,
     onSurfaceVariant = OnSurfaceVariantDark,
+    surfaceContainerHigh = Color(0xFF1E1E24),
+    surfaceContainerHighest = Color(0xFF282830),
     outline = OutlineDark,
-    outlineVariant = OutlineVariantDark
+    outlineVariant = OutlineVariantDark,
+    error = StatusRedDark,
+    onError = Color.White,
+    errorContainer = StatusRedDarkSubtle,
+    onErrorContainer = StatusRedDark
   )
 
 private val LightColorScheme =
   lightColorScheme(
-    primary = BrandBlack,
+    primary = Neutral1000,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFF27272A),
+    primaryContainer = Neutral900,
     onPrimaryContainer = Color.White,
-    secondary = Color(0xFF52525B),
+    secondary = Neutral700,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFEFEBE3),
-    onSecondaryContainer = Color(0xFF18181B),
-    tertiary = BrandAccentAmber,
+    secondaryContainer = Neutral100,
+    onSecondaryContainer = Neutral1000,
+    tertiary = Neutral600,
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFEF3C7),
-    onTertiaryContainer = Color(0xFF78350F),
+    tertiaryContainer = Neutral100,
+    onTertiaryContainer = Neutral900,
     background = BackgroundLight,
     onBackground = OnSurfaceLight,
     surface = SurfaceLight,
     onSurface = OnSurfaceLight,
     surfaceVariant = SurfaceVariantLight,
     onSurfaceVariant = OnSurfaceVariantLight,
+    surfaceContainerHigh = Neutral100,
+    surfaceContainerHighest = Neutral150,
     outline = OutlineLight,
-    outlineVariant = OutlineVariantLight
+    outlineVariant = OutlineVariantLight,
+    error = StatusRed,
+    onError = Color.White,
+    errorContainer = StatusRedSubtle,
+    onErrorContainer = StatusRed
   )
 
 @Composable
@@ -78,4 +90,3 @@ fun MyApplicationTheme(
 
   MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
 }
-

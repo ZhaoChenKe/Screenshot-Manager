@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -26,6 +25,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.DesignTokens
 
 @Composable
 fun StatCard(
@@ -39,21 +39,21 @@ fun StatCard(
 ) {
     Card(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DesignTokens.ShapeMedium)
             .then(
                 if (onClick != null) Modifier.clickable(onClick = onClick)
                 else Modifier
             )
             .testTag("stat_card_${title}"),
-        shape = RoundedCornerShape(16.dp),
+        shape = DesignTokens.ShapeMedium,
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+        border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
@@ -64,24 +64,23 @@ fun StatCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelSmall,
-                    color = contentColor.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
                 )
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    tint = contentColor.copy(alpha = 0.85f),
-                    modifier = Modifier.size(18.dp)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.size(15.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = count.toString(),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
                 color = contentColor
             )
         }
     }
 }
-

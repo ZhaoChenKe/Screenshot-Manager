@@ -4,8 +4,13 @@ import android.app.Application
 import com.example.data.db.AppDatabase
 import com.example.data.preferences.UserPreferencesRepository
 import com.example.data.repository.ScreenshotRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 class ScreenshotApplication : Application() {
+
+    val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     lateinit var database: AppDatabase
         private set

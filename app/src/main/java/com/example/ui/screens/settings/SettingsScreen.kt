@@ -20,17 +20,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.SystemUpdate
+import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -67,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.BuildConfig
 import com.example.R
 import com.example.ui.components.UpdateDialog
+import com.example.ui.theme.DesignTokens
 import com.example.ui.viewmodel.ScreenshotViewModel
 import com.example.update.DownloadState
 import com.example.update.UpdateCheckResult
@@ -133,10 +133,10 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = "设置与偏好", fontWeight = FontWeight.Bold) },
+                title = { Text(text = "设置与偏好", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -151,21 +151,21 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 1. Scanning Settings Card
-            Text(text = "扫描与整理", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = "扫描与整理", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = DesignTokens.ShapeCard,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "自动扫描新截图", fontWeight = FontWeight.SemiBold)
+                            Text(text = "自动扫描新截图", fontWeight = FontWeight.Medium)
                             Text(
                                 text = "启动应用时自动检索手机相册中新生成的截图",
                                 style = MaterialTheme.typography.bodySmall,
@@ -181,7 +181,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(DesignTokens.ShapeSmall)
                             .clickable {
                                 viewModel.startScan()
                                 Toast.makeText(context, "已启动全面扫描相册", Toast.LENGTH_SHORT).show()
@@ -189,10 +189,10 @@ fun SettingsScreen(
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+                        Icon(imageVector = Icons.Outlined.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = "立即重新扫描相册", fontWeight = FontWeight.SemiBold)
+                            Text(text = "立即重新扫描相册", fontWeight = FontWeight.Medium)
                             Text(
                                 text = "重新同步设备所有截图目录",
                                 style = MaterialTheme.typography.bodySmall,
@@ -204,14 +204,14 @@ fun SettingsScreen(
             }
 
             // 2. AI Understanding Settings Card
-            Text(text = "AI 智能增强", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = "AI 智能增强", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = DesignTokens.ShapeCard,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -219,9 +219,9 @@ fun SettingsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
+                                Icon(imageVector = Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = "启用 AI 语义分析", fontWeight = FontWeight.SemiBold)
+                                Text(text = "启用 AI 语义分析", fontWeight = FontWeight.Medium)
                             }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
@@ -238,12 +238,12 @@ fun SettingsScreen(
 
                     // Privacy Note
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                        shape = DesignTokens.ShapeSmall,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                            Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.Top) {
+                            Icon(imageVector = Icons.Outlined.Security, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "隐私说明：开启 AI 增强时会将截图提取文字发往 AI 服务进行理解。关闭状态下所有 OCR、分类、检索全部在本地设备离线进行。",
@@ -256,7 +256,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(DesignTokens.ShapeSmall)
                             .clickable {
                                 apiKeyInput = prefs.customApiKey
                                 showApiKeyDialog = true
@@ -264,10 +264,10 @@ fun SettingsScreen(
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.VpnKey, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+                        Icon(imageVector = Icons.Outlined.VpnKey, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "配置自定义 API Key", fontWeight = FontWeight.SemiBold)
+                            Text(text = "配置自定义 API Key", fontWeight = FontWeight.Medium)
                             val keyStatus = if (prefs.customApiKey.isNotBlank()) "已配置自定义 Key" else "使用系统默认 Key"
                             Text(
                                 text = keyStatus,
@@ -280,25 +280,25 @@ fun SettingsScreen(
             }
 
             // 3. Theme Card
-            Text(text = "显示与外观", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = "显示与外观", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = DesignTokens.ShapeCard,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(DesignTokens.ShapeCard)
                         .clickable { showThemeDialog = true }
-                        .padding(16.dp),
+                        .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(imageVector = Icons.Outlined.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "深色模式", fontWeight = FontWeight.SemiBold)
+                        Text(text = "深色模式", fontWeight = FontWeight.Medium)
                         val themeText = when (prefs.themeMode) {
                             "light" -> "浅色"
                             "dark" -> "深色"
@@ -309,47 +309,19 @@ fun SettingsScreen(
                 }
             }
 
-            // 4. Demo Data Card
-            Text(text = "演示与测试", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            // 4. Rescan Device Album Card
+            Text(text = "相册同步", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = DesignTokens.ShapeCard,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable {
-                                viewModel.loadSampleScreenshots {
-                                    Toast.makeText(context, "已成功导入5张演示截图！", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "一键导入演示示例截图", fontWeight = FontWeight.SemiBold)
-                            Text(
-                                text = "生成购物订单、快递派送、会议纪要、行程机票、技术笔记等示例截图，用于快速体验完整功能",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    androidx.compose.material3.HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(DesignTokens.ShapeSmall)
                             .clickable {
                                 viewModel.startScan()
                                 Toast.makeText(context, "正在重新扫描设备相册...", Toast.LENGTH_SHORT).show()
@@ -357,10 +329,10 @@ fun SettingsScreen(
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+                        Icon(imageVector = Icons.Outlined.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "重新扫描设备相册", fontWeight = FontWeight.SemiBold)
+                            Text(text = "重新扫描设备相册", fontWeight = FontWeight.Medium)
                             Text(
                                 text = "从手机媒体库中扫描全部截屏并增量同步",
                                 style = MaterialTheme.typography.bodySmall,
@@ -372,44 +344,44 @@ fun SettingsScreen(
             }
 
             // 5. Version & Update & About
-            Text(text = "版本与关于", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = "版本与关于", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = DesignTokens.ShapeCard,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
+                border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     // App Brand & Version info
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
-                                .clip(RoundedCornerShape(10.dp))
+                                .size(38.dp)
+                                .clip(DesignTokens.ShapeSmall)
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp)),
+                                .border(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant, DesignTokens.ShapeSmall),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_app_brand_logo_tintable),
                                 contentDescription = "Logo",
                                 tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(text = "截图管家", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(text = "截图管家", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                                 Surface(
                                     shape = RoundedCornerShape(4.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer
+                                    color = MaterialTheme.colorScheme.surfaceVariant
                                 ) {
                                     Text(
                                         text = "独立分发版",
                                         fontSize = 10.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                     )
                                 }
@@ -428,7 +400,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(DesignTokens.ShapeSmall)
                             .clickable {
                                 viewModel.checkForUpdate(isManual = true, simulateIfNoUrl = true)
                             }
@@ -437,20 +409,21 @@ fun SettingsScreen(
                     ) {
                         if (updateCheckResult is UpdateCheckResult.Checking) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.5.dp,
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Default.SystemUpdate,
+                                imageVector = Icons.Outlined.SystemUpdate,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "检查版本更新", fontWeight = FontWeight.SemiBold)
+                            Text(text = "检查版本更新", fontWeight = FontWeight.Medium)
                             Text(
                                 text = "上次检查：$lastCheckText · 点击直接从手机端检测更新",
                                 style = MaterialTheme.typography.bodySmall,
@@ -465,7 +438,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(DesignTokens.ShapeSmall)
                             .clickable {
                                 showFrequencyDialog = true
                             }
@@ -473,13 +446,14 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Schedule,
+                            imageVector = Icons.Outlined.Schedule,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "自动检查更新周期", fontWeight = FontWeight.SemiBold)
+                            Text(text = "自动检查更新周期", fontWeight = FontWeight.Medium)
                             Text(
                                 text = frequencyText,
                                 style = MaterialTheme.typography.bodySmall,
@@ -494,7 +468,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(DesignTokens.ShapeSmall)
                             .clickable {
                                 customUrlInput = prefs.customUpdateUrl
                                 showCustomUrlDialog = true
@@ -503,13 +477,14 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Link,
+                            imageVector = Icons.Outlined.Link,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "版本更新服务源", fontWeight = FontWeight.SemiBold)
+                            Text(text = "版本更新服务源", fontWeight = FontWeight.Medium)
                             Text(
                                 text = if (prefs.customUpdateUrl.isBlank()) "默认官方源：Gitee Releases (国内极速直连)" else prefs.customUpdateUrl,
                                 style = MaterialTheme.typography.bodySmall,
@@ -537,7 +512,7 @@ fun SettingsScreen(
     if (showApiKeyDialog) {
         AlertDialog(
             onDismissRequest = { showApiKeyDialog = false },
-            title = { Text("配置 Gemini API Key") },
+            title = { Text("配置 Gemini API Key", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
             text = {
                 Column {
                     Text(
@@ -551,6 +526,7 @@ fun SettingsScreen(
                         onValueChange = { apiKeyInput = it },
                         placeholder = { Text("AIzaSy...") },
                         singleLine = true,
+                        shape = DesignTokens.ShapeSmall,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -563,14 +539,16 @@ fun SettingsScreen(
                         Toast.makeText(context, "已保存 API Key", Toast.LENGTH_SHORT).show()
                     }
                 ) {
-                    Text("保存")
+                    Text("保存", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showApiKeyDialog = false }) {
-                    Text("取消")
+                    Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            }
+            },
+            shape = DesignTokens.ShapeCard,
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -578,7 +556,7 @@ fun SettingsScreen(
     if (showThemeDialog) {
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
-            title = { Text("选择主题模式") },
+            title = { Text("选择主题模式", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
             text = {
                 Column {
                     listOf("system" to "跟随系统", "light" to "浅色模式", "dark" to "深色模式").forEach { (key, label) ->
@@ -600,16 +578,18 @@ fun SettingsScreen(
                                 }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = label)
+                            Text(text = label, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showThemeDialog = false }) {
-                    Text("关闭")
+                    Text("关闭", color = MaterialTheme.colorScheme.onSurface)
                 }
-            }
+            },
+            shape = DesignTokens.ShapeCard,
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -617,7 +597,7 @@ fun SettingsScreen(
     if (showFrequencyDialog) {
         AlertDialog(
             onDismissRequest = { showFrequencyDialog = false },
-            title = { Text("自动检查更新周期") },
+            title = { Text("自动检查更新周期", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
             text = {
                 Column {
                     listOf(
@@ -645,16 +625,18 @@ fun SettingsScreen(
                                 }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = label)
+                            Text(text = label, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showFrequencyDialog = false }) {
-                    Text("关闭")
+                    Text("关闭", color = MaterialTheme.colorScheme.onSurface)
                 }
-            }
+            },
+            shape = DesignTokens.ShapeCard,
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -662,7 +644,7 @@ fun SettingsScreen(
     if (showCustomUrlDialog) {
         AlertDialog(
             onDismissRequest = { showCustomUrlDialog = false },
-            title = { Text("配置版本更新服务源") },
+            title = { Text("配置版本更新服务源", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
             text = {
                 Column {
                     Text(
@@ -676,6 +658,7 @@ fun SettingsScreen(
                         onValueChange = { customUrlInput = it },
                         placeholder = { Text("https://gitee.com/api/v5/repos/zhao-chenke/Screenshot-Manager/releases/latest") },
                         singleLine = true,
+                        shape = DesignTokens.ShapeSmall,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -688,7 +671,7 @@ fun SettingsScreen(
                         Toast.makeText(context, "已保存自定义更新源", Toast.LENGTH_SHORT).show()
                     }
                 ) {
-                    Text("保存")
+                    Text("保存", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
             },
             dismissButton = {
@@ -702,14 +685,16 @@ fun SettingsScreen(
                                 Toast.makeText(context, "已恢复默认更新源", Toast.LENGTH_SHORT).show()
                             }
                         ) {
-                            Text("恢复默认")
+                            Text("恢复默认", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     TextButton(onClick = { showCustomUrlDialog = false }) {
-                        Text("取消")
+                        Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-            }
+            },
+            shape = DesignTokens.ShapeCard,
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 

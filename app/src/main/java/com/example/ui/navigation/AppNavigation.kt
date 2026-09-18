@@ -4,10 +4,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -51,10 +51,10 @@ fun AppNavigation(
     val navController = rememberNavController()
 
     val navItems = listOf(
-        BottomNavItem(Screen.Home.route, "首页", Icons.Default.Home),
-        BottomNavItem(Screen.Categories.route, "分类", Icons.Default.Category),
-        BottomNavItem(Screen.Timeline.route, "时间线", Icons.Default.CalendarMonth),
-        BottomNavItem(Screen.Search.route, "搜索", Icons.Default.Search)
+        BottomNavItem(Screen.Home.route, "首页", Icons.Outlined.Home),
+        BottomNavItem(Screen.Categories.route, "分类", Icons.Outlined.Category),
+        BottomNavItem(Screen.Timeline.route, "时间线", Icons.Outlined.CalendarMonth),
+        BottomNavItem(Screen.Search.route, "搜索", Icons.Outlined.Search)
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()

@@ -12,6 +12,7 @@ import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -78,39 +79,57 @@ class AppUpdateManager(private val context: Context) {
     ): UpdateCheckResult = withContext(Dispatchers.IO) {
         val (currentVersionName, currentVersionCode) = getCurrentVersionInfo()
 
-        val urlStr = if (customUrl.isNullOrBlank()) DEFAULT_UPDATE_URL else customUrl.trim()
+        val targetUrlStr = if (customUrl.isNullOrBlank()) DEFAULT_UPDATE_URL else customUrl.trim()
 
         try {
-            val url = URL(urlStr)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                connectTimeout = 10000
-                readTimeout = 12000
-                requestMethod = "GET"
-                setRequestProperty("Accept", "application/vnd.github.v3+json, application/json")
-                setRequestProperty("User-Agent", "ScreenshotManager/${currentVersionName}")
+            var activeUrl = targetUrlStr
+            var connection = createHttpConnection(activeUrl, currentVersionName)
+            var responseCode = connection.responseCode
+
+            // 如果 Gitee 请求 /releases/latest 返回 404（通常是仓库刚建好尚未生成最新 Release，或者部分环境仅支持 /releases 列表）
+            // 自动回退尝试读取 releases 列表并取第一个
+            if (responseCode == HttpURLConnection.HTTP_NOT_FOUND && activeUrl.contains("gitee.com") && activeUrl.endsWith("/releases/latest")) {
+                val listUrl = activeUrl.removeSuffix("/latest")
+                try {
+                    val listConn = createHttpConnection(listUrl, currentVersionName)
+                    if (listConn.responseCode == HttpURLConnection.HTTP_OK) {
+                        connection = listConn
+                        responseCode = listConn.responseCode
+                        activeUrl = listUrl
+                    }
+                } catch (_: Exception) {}
             }
 
-            val responseCode = connection.responseCode
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                val jsonStr = connection.inputStream.bufferedReader().use { it.readText() }
-                val json = JSONObject(jsonStr)
-
-                val updateInfo: UpdateInfo? = if (json.has("tag_name")) {
-                    // Gitee or GitHub Releases API Format
-                    if (urlStr.contains("gitee.com")) {
-                        parseGiteeReleaseJson(json, currentVersionCode)
-                    } else {
-                        parseGitHubReleaseJson(json, currentVersionCode)
+                val jsonStr = connection.inputStream.bufferedReader().use { it.readText().trim() }
+                
+                var targetJsonObject: JSONObject? = null
+                if (jsonStr.startsWith("[")) {
+                    // 如果返回的是 Release 列表数组，取第一个元素（最新版）
+                    val array = JSONArray(jsonStr)
+                    if (array.length() > 0) {
+                        targetJsonObject = array.getJSONObject(0)
                     }
-                } else if (json.has("versionCode") || json.has("versionName")) {
+                } else if (jsonStr.startsWith("{")) {
+                    targetJsonObject = JSONObject(jsonStr)
+                }
+
+                val updateInfo: UpdateInfo? = if (targetJsonObject != null && targetJsonObject.has("tag_name")) {
+                    // Gitee or GitHub Releases API Format
+                    if (activeUrl.contains("gitee.com")) {
+                        parseGiteeReleaseJson(targetJsonObject, currentVersionCode)
+                    } else {
+                        parseGitHubReleaseJson(targetJsonObject, currentVersionCode)
+                    }
+                } else if (targetJsonObject != null && (targetJsonObject.has("versionCode") || targetJsonObject.has("versionName"))) {
                     // Standard Custom version.json Format
-                    val remoteVersionCode = json.optInt("versionCode", 1)
-                    val remoteVersionName = json.optString("versionName", "1.0.1")
-                    val changelog = json.optString("changelog", "1. 稳定性优化与问题修复")
-                    val downloadUrl = json.optString("downloadUrl", "")
-                    val fileSizeMb = json.optDouble("fileSizeMb", 15.0)
-                    val isForceUpdate = json.optBoolean("isForceUpdate", false)
-                    val publishDate = json.optString("publishDate", "")
+                    val remoteVersionCode = targetJsonObject.optInt("versionCode", 1)
+                    val remoteVersionName = targetJsonObject.optString("versionName", "1.0.1")
+                    val changelog = targetJsonObject.optString("changelog", "1. 稳定性优化与问题修复")
+                    val downloadUrl = targetJsonObject.optString("downloadUrl", "")
+                    val fileSizeMb = targetJsonObject.optDouble("fileSizeMb", 15.0)
+                    val isForceUpdate = targetJsonObject.optBoolean("isForceUpdate", false)
+                    val publishDate = targetJsonObject.optString("publishDate", "")
                     UpdateInfo(
                         versionCode = remoteVersionCode,
                         versionName = remoteVersionName,
@@ -130,7 +149,7 @@ class AppUpdateManager(private val context: Context) {
                     UpdateCheckResult.UpToDate(currentVersionName, currentVersionCode)
                 }
             } else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
-                // 404 表示 GitHub 仓库尚未发布任何 Release，当前即为最新
+                // 404 表示仓库尚未发布任何 Release 或标签，当前即为最新
                 if (simulateIfNoUrl) {
                     UpdateCheckResult.HasUpdate(getSimulatedUpdateInfo(currentVersionCode + 1))
                 } else {
@@ -144,12 +163,23 @@ class AppUpdateManager(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to fetch update from $urlStr: ${e.message}")
+            Log.w(TAG, "Failed to fetch update from $targetUrlStr: ${e.message}")
             if (simulateIfNoUrl) {
                 UpdateCheckResult.HasUpdate(getSimulatedUpdateInfo(currentVersionCode + 1))
             } else {
                 UpdateCheckResult.Error("无法连接到更新服务器: ${e.localizedMessage ?: "网络错误"}")
             }
+        }
+    }
+
+    private fun createHttpConnection(urlStr: String, currentVersionName: String): HttpURLConnection {
+        val url = URL(urlStr)
+        return (url.openConnection() as HttpURLConnection).apply {
+            connectTimeout = 10000
+            readTimeout = 12000
+            requestMethod = "GET"
+            setRequestProperty("Accept", "application/vnd.github.v3+json, application/json")
+            setRequestProperty("User-Agent", "ScreenshotManager/${currentVersionName}")
         }
     }
 

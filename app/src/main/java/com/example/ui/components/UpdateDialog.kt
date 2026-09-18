@@ -2,8 +2,8 @@ package com.example.ui.components
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +19,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.outlined.OpenInBrowser
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,11 +37,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
+import com.example.ui.theme.DesignTokens
 import com.example.update.DownloadState
 import com.example.update.UpdateInfo
 
@@ -55,6 +53,7 @@ fun UpdateDialog(
     modifier: Modifier = Modifier
 ) {
     val isDownloading = downloadState is DownloadState.Downloading
+    val context = LocalContext.current
 
     AlertDialog(
         onDismissRequest = {
@@ -63,150 +62,90 @@ fun UpdateDialog(
             }
         },
         modifier = modifier,
+        shape = DesignTokens.ShapeCard,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .border(
-                            1.dp,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            RoundedCornerShape(10.dp)
-                        ),
+                        .size(34.dp)
+                        .clip(DesignTokens.ShapeSmall)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.SystemUpdate,
+                        imageVector = Icons.Outlined.SystemUpdate,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
                         text = "发现新版本",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.primary
-                        ) {
-                            Text(
-                                text = "v${updateInfo.versionName}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                        if (updateInfo.fileSizeMb > 0) {
-                            Text(
-                                text = "${updateInfo.fileSizeMb} MB",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Text(
+                        text = "v${updateInfo.versionName}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "更新内容：",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .verticalScroll(rememberScrollState())
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (updateInfo.changelog.isNotBlank()) {
+                    Text(
+                        text = "更新日志",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Surface(
+                        shape = DesignTokens.ShapeSmall,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Text(
                             text = updateInfo.changelog,
-                            style = MaterialTheme.typography.bodyMedium,
-                            lineHeight = 20.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 18.sp,
+                            modifier = Modifier.padding(10.dp)
                         )
                     }
                 }
 
-                // Download Progress
-                if (downloadState is DownloadState.Downloading) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                if (isDownloading) {
+                    val progress = (downloadState as DownloadState.Downloading).progressPercent
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = "正在下载安装包...",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "${downloadState.progressPercent}%",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Text(text = "下载更新中...", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(text = "$progress%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
                         LinearProgressIndicator(
-                            progress = { downloadState.progressPercent / 100f },
+                            progress = { progress / 100f },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(CircleShape),
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(1.5.dp)),
                             color = MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
-                    }
-                } else if (downloadState is DownloadState.Failed) {
-                    val context = LocalContext.current
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "下载失败: ${downloadState.error}",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = {
-                            try {
-                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(updateInfo.downloadUrl)).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                context.startActivity(browserIntent)
-                            } catch (_: Exception) {}
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(imageVector = Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("使用手机浏览器下载", fontSize = 13.sp)
                     }
                 }
             }
@@ -215,31 +154,32 @@ fun UpdateDialog(
             Button(
                 onClick = onStartDownload,
                 enabled = !isDownloading,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                shape = DesignTokens.ShapeSmall,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 8.dp)
             ) {
-                if (isDownloading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("下载中...")
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Download,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(if (downloadState is DownloadState.Failed) "重试下载" else "立即更新")
-                }
+                Text(
+                    text = if (isDownloading) "正在下载..." else "立即下载更新",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         },
         dismissButton = {
             if (!updateInfo.isForceUpdate && !isDownloading) {
-                TextButton(onClick = onDismiss) {
-                    Text("稍后再说")
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = DesignTokens.ShapeSmall,
+                    border = BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(text = "稍后", fontSize = 13.sp)
                 }
             }
         }

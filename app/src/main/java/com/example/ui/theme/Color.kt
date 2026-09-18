@@ -2,40 +2,45 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Minimalist Premium Palette (Inspired by architectural branding and the monochrome icon)
-val BrandBlack = Color(0xFF18181B)
-val BrandCharcoal = Color(0xFF27272A)
-val BrandMuted = Color(0xFF71717A)
-val BrandAccentAmber = Color(0xFFB45309)
+// Minimalist Monochrome & Neutral Palette (Apple / Linear / Notion style)
+// Clean, understated, high contrast, zero unnecessary saturated colors
 
-// Light Theme (Warm Alabaster / Ivory Paper Aesthetic)
-val BackgroundLight = Color(0xFFFAF8F5)
-val SurfaceLight = Color(0xFFFFFFFF)
-val SurfaceVariantLight = Color(0xFFF3EFE8)
-val SurfaceContainerLight = Color(0xFFF7F4EE)
-val OnSurfaceLight = Color(0xFF18181B)
-val OnSurfaceVariantLight = Color(0xFF52525B)
-val OutlineLight = Color(0xFFE4DFD5)
-val OutlineVariantLight = Color(0xFFEDE9E1)
+val Neutral1000 = Color(0xFF09090B) // Near pure black
+val Neutral900  = Color(0xFF18181B) // Charcoal Black
+val Neutral800  = Color(0xFF27272A)
+val Neutral700  = Color(0xFF3F3F46)
+val Neutral600  = Color(0xFF52525B)
+val Neutral500  = Color(0xFF71717A) // Medium Slate Gray
+val Neutral400  = Color(0xFFA1A1AA)
+val Neutral300  = Color(0xFFD4D4D8)
+val Neutral200  = Color(0xFFE4E4E7) // Subtle border gray
+val Neutral150  = Color(0xFFECECEE) // Hairline divider
+val Neutral100  = Color(0xFFF4F4F5) // Surface variant light
+val Neutral50   = Color(0xFFFAFAFB) // Warm Off-white / Pure light canvas
+val Neutral0    = Color(0xFFFFFFFF) // Pure white
 
-// Dark Theme (OLED Midnight Carbon Aesthetic)
-val BackgroundDark = Color(0xFF0F0F11)
-val SurfaceDark = Color(0xFF18181B)
-val SurfaceVariantDark = Color(0xFF242429)
-val SurfaceContainerDark = Color(0xFF1D1D22)
-val OnSurfaceDark = Color(0xFFF4F4F5)
+// Light Theme
+val BackgroundLight = Neutral50
+val SurfaceLight = Neutral0
+val SurfaceVariantLight = Neutral100
+val SurfaceContainerLight = Neutral100
+val OnSurfaceLight = Neutral1000
+val OnSurfaceVariantLight = Neutral600
+val OutlineLight = Neutral200
+val OutlineVariantLight = Neutral150
+
+// Dark Theme (Deep Carbon / OLED)
+val BackgroundDark = Color(0xFF09090B)
+val SurfaceDark = Color(0xFF121215)
+val SurfaceVariantDark = Color(0xFF1C1C20)
+val SurfaceContainerDark = Color(0xFF18181C)
+val OnSurfaceDark = Color(0xFFEDEDF0)
 val OnSurfaceVariantDark = Color(0xFFA1A1AA)
-val OutlineDark = Color(0xFF2E2E36)
-val OutlineVariantDark = Color(0xFF3F3F46)
+val OutlineDark = Color(0xFF27272E)
+val OutlineVariantDark = Color(0xFF1E1E24)
 
-// Tag Chips (Subtle stone tones)
-val TagChipBgLight = Color(0xFFEFEBE3)
-val TagChipTextLight = Color(0xFF27272A)
-val TagChipBgDark = Color(0xFF27272A)
-val TagChipTextDark = Color(0xFFE4E4E7)
-
-// Status Accents
-val SuccessGreen = Color(0xFF15803D)
-val WarningAmber = Color(0xFFB45309)
-val DangerRed = Color(0xFFDC2626)
-
+// Minimalist functional status colors (restrained, desaturated)
+val StatusRed = Color(0xFFDC2626)
+val StatusRedSubtle = Color(0xFFFEF2F2)
+val StatusRedDark = Color(0xFFEF4444)
+val StatusRedDarkSubtle = Color(0xFF2A1515)

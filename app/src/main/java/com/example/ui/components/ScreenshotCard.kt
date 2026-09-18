@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.ScreenshotWithDetails
+import com.example.ui.theme.DesignTokens
 import com.example.ui.util.CategoryUiHelper
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,15 +60,15 @@ fun ScreenshotCard(
     val categoryStyle = CategoryUiHelper.getStyle(screenshot.categoryId)
 
     val borderStroke = if (isSelectionMode && isSelected) {
-        BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
     } else {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+        BorderStroke(DesignTokens.HairlineBorder, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
     }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DesignTokens.ShapeCard)
             .clickable(onClick = {
                 if (isSelectionMode) {
                     onToggleSelect?.invoke()
@@ -76,7 +77,7 @@ fun ScreenshotCard(
                 }
             })
             .testTag("screenshot_card_${screenshot.id}"),
-        shape = RoundedCornerShape(16.dp),
+        shape = DesignTokens.ShapeCard,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -100,13 +101,13 @@ fun ScreenshotCard(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Selection Checkbox or Category Pill
+                // Selection Checkbox
                 if (isSelectionMode) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(8.dp)
-                            .size(26.dp)
+                            .size(24.dp)
                             .clip(CircleShape)
                             .background(
                                 if (isSelected) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.45f)
@@ -119,30 +120,30 @@ fun ScreenshotCard(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "已选择",
                                 tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                         }
                     }
                 }
 
-                // Minimalist frosted category pill on top-left
+                // Minimalist translucent category pill on top-left
                 val categoryName = category?.name ?: categoryStyle.displayName
                 Row(
                     modifier = Modifier
                         .padding(8.dp)
                         .align(Alignment.TopStart)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xE61E293B))
-                        .padding(horizontal = 7.dp, vertical = 3.5.dp),
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(alpha = 0.65f))
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = categoryStyle.icon,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(11.dp)
+                        modifier = Modifier.size(10.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = categoryName,
                         color = Color.White,
@@ -156,11 +157,11 @@ fun ScreenshotCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(36.dp)
+                        .height(30.dp)
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color(0xB3000000))
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
                             )
                         )
                 )
@@ -170,18 +171,18 @@ fun ScreenshotCard(
                 val dateStr = dateFormat.format(Date(screenshot.createTime))
                 Text(
                     text = dateStr,
-                    color = Color.White.copy(alpha = 0.92f),
+                    color = Color.White.copy(alpha = 0.9f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Normal,
-                    letterSpacing = 0.3.sp,
+                    letterSpacing = 0.2.sp,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 8.dp, bottom = 5.dp)
+                        .padding(end = 8.dp, bottom = 4.dp)
                 )
             }
 
-            // Title & Snippet info
-            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
+            // Title & Snippet info - clean, restrained typography
+            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                 val displayTitle = when {
                     screenshot.title.isNotBlank() -> screenshot.title
                     screenshot.ocrText.isNotBlank() -> screenshot.ocrText.lines().firstOrNull { it.isNotBlank() } ?: screenshot.fileName
@@ -198,7 +199,7 @@ fun ScreenshotCard(
                 )
 
                 if (screenshot.summary.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = screenshot.summary,
                         style = MaterialTheme.typography.labelSmall,
@@ -207,11 +208,11 @@ fun ScreenshotCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 } else if (item.tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = item.tags.take(2).joinToString(" ") { "#${it.name}" },
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -220,4 +221,3 @@ fun ScreenshotCard(
         }
     }
 }
-

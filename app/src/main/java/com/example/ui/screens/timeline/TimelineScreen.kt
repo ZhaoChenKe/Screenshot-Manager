@@ -1,9 +1,7 @@
 package com.example.ui.screens.timeline
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,9 +16,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -31,13 +28,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.model.ScreenshotWithDetails
 import com.example.ui.components.EmptyStateView
 import com.example.ui.components.ScreenshotCard
 import com.example.ui.viewmodel.ScreenshotViewModel
@@ -67,7 +61,8 @@ fun TimelineScreen(
                 title = {
                     Text(
                         text = "时间线",
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             )
@@ -75,7 +70,7 @@ fun TimelineScreen(
     ) { innerPadding ->
         if (allScreenshots.isEmpty()) {
             EmptyStateView(
-                icon = Icons.Default.CalendarMonth,
+                icon = Icons.Outlined.CalendarMonth,
                 title = "暂无时间线记录",
                 description = "扫描相册截图后，将按时间先后顺序整理成时间轴。",
                 modifier = Modifier
@@ -108,14 +103,14 @@ fun TimelineScreen(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(8.dp)
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(6.dp)
                             ) {}
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = dateStr,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onBackground
                             )
                             Spacer(modifier = Modifier.width(8.dp))
